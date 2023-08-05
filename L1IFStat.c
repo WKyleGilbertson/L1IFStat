@@ -8,6 +8,84 @@
 FT_STATUS ftStatus;
 WORD i = 0;
 
+bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
+{
+/* This should be a function!*/
+  //////////////////////////////////////////////////////////////////
+	// Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
+	//////////////////////////////////////////////////////////////////
+  // Enable internal loop-back AN 135 Section 5.3.1
+  bool retVal = false;
+  FT_STATUS ftS;
+  DWORD BTS = 0;  // Bytes to send
+  DWORD NBS = 0;  // Number of bytes sent
+  DWORD NBR = 0;  // Number of bytes read
+  DWORD BTR = 0;  // Bytes to read
+  BYTE oBuff[64];
+  BYTE iBuff[64];
+  BYTE idx = 0;
+
+  BTS = 0;
+  oBuff[BTS++] = 0x84; // Enable loopback
+  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
+  NBS = 0;
+  ftS = FT_GetQueueStatus(ftH, &NBR);
+  if (NBR != 0) {
+    fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
+    FT_SetBitMode(ftH, 0x00, 0x00);
+    FT_Close(ftH);
+    return 1;
+  }
+  else {
+//    fprintf(stderr, "Loopback Enabled\n");
+  }
+
+	BTS = 0;
+	oBuff[BTS++] = cmd;		//Add BAD command ¡®0xAA¡¯
+	ftS = FT_Write(ftH, oBuff, BTS, &NBS);	// Send off the BAD commands
+//	fprintf(stderr, "Bytes Sent: %d\n", NBS);
+	BTS = 0;  //Clear output buffer
+	do{
+		ftS = FT_GetQueueStatus(ftH, &BTR);	 // Get the number of bytes in the device input buffer
+	} while ((BTR == 0) && (ftS == FT_OK));   	//or Timeout
+
+	ftS = FT_Read(ftH, iBuff, BTR, &NBR);  //Read out the data from input buffer
+	for (idx = 0; idx < (NBR - 1); idx++)	//Check if Bad command and echo command received
+	{
+		if ((iBuff[idx] == 0xFA) && (iBuff[idx + 1] == cmd))
+		{
+			retVal = true;
+			break;
+		}
+	}
+	if (retVal == false)
+	{
+		fprintf(stderr, "fail to synchronize MPSSE with command '0xAA' \n");
+		//Error, can¡¯t receive echo command , fail to synchronize MPSSE interface;
+	}
+  else {
+//    fprintf(stderr, "Bad command 0x%.2X was Echoed\n", cmd);
+  }
+  // Disable internal loop-back
+  BTS = 0;
+  oBuff[BTS++] = 0x85; // Disable loopback
+  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
+  BTS = 0;
+  ftS = FT_GetQueueStatus(ftH, &NBR);
+  if (NBR!= 0) {
+    fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
+    FT_SetBitMode(ftH, 0x00, 0x00);
+    FT_Close(ftH);
+    retVal = false;
+    //return 1; // maybe this should be exit(0)?
+  }
+  else {
+//    fprintf(stderr, "Loopback Disabled\n");
+  }
+/* End of testing bad command part, 5.3.1*/
+return retVal;
+}
+
 int main()
 {
   FT_HANDLE ftdiHandle;
@@ -19,7 +97,7 @@ int main()
   DWORD dwNumBytesSent = 0, dwNumBytesRead = 0, dwNumInputBuffer = 0;
   DWORD dwCount = 0;
 // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
-	bool bCommandEchod = false;
+//	bool bCommandEchod = false;
   bool antennaConnected = false;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
@@ -83,7 +161,16 @@ int main()
     printf("AN 135 Section 4.2 complete\n");
   }
 	Sleep(50);	// Wait for all the USB stuff to complete and work
-  /* This should be a function!*/
+
+  //////////////////////////////////////////////////////////////////
+	// Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
+	//////////////////////////////////////////////////////////////////
+  printf("Bad command 0xAA was echoed? %s\n",
+   (testBadCommand(ftdiHandle, 0xAA) == true) ? "yes" : "no" );
+  printf("Bad command 0xAB was echoed? %s\n",
+   (testBadCommand(ftdiHandle, 0xAB) == true) ? "yes" : "no" );
+
+  /*
   //////////////////////////////////////////////////////////////////
 	// Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
 	//////////////////////////////////////////////////////////////////
@@ -124,7 +211,7 @@ int main()
 	if (bCommandEchod == false)
 	{
 		printf("fail to synchronize MPSSE with command '0xAA' \n");
-		return false; /*Error, can¡¯t receive echo command , fail to synchronize MPSSE interface;*/
+		return false; //Error, can¡¯t receive echo command , fail to synchronize MPSSE interface;
 	}
   else {
     printf("Bad command 0xAA was Echoed\n");
@@ -156,7 +243,7 @@ int main()
 	{
 		printf("fail to synchronize MPSSE with command '0xAB' \n");
 		return false;
-		/*Error, can't receive echo command , fail to synchronize MPSSE interface;*/
+		//Error, can't receive echo command , fail to synchronize MPSSE interface;
 	}
   else {
       printf("Bad command 0xAB was echoed\n");
@@ -177,7 +264,11 @@ int main()
   else {
     printf("Loopback Disabled\n");
   }
+*/
 /* End of testing bad command part, 5.3.1*/
+
+/* Configure SPI here. Do I need to? */
+
 /* Now READ the GPIO to See if Antenna is attached*/
 // Change scope trigger to channel 4 (TMS/CS) falling edge
 dwNumBytesToSend = 0;
