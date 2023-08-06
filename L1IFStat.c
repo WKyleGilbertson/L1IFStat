@@ -1,16 +1,17 @@
 #pragma comment(lib, "lib/FTD2XX.lib")
 #include "inc/FTD2XX.h"
 #include <windows.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
 
 FT_STATUS ftStatus;
+BYTE L1IFStat;
 WORD i = 0;
 
 bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
 {
-/* This should be a function!*/
   //////////////////////////////////////////////////////////////////
 	// Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
 	//////////////////////////////////////////////////////////////////
@@ -84,6 +85,55 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
   }
 /* End of testing bad command AN 135 5.3.1*/
 return retVal;
+}
+
+//BYTE readGPIObyte(ftdiHandle, 0){ // Low byte = 0, High byte = 1
+BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB){ // Low byte = 0, High byte = 1
+  BYTE retVal = 0x00;
+  FT_STATUS ftS;
+  DWORD BTS = 0;  // Bytes to send
+  DWORD BTR = 0;  // Bytes to read
+  DWORD NBS = 0;  // Number of bytes sent
+  DWORD NBR = 0;  // Number of bytes read
+  BYTE opCode = 0;// FTDI OPCODE
+  BYTE oBuff[64];
+  BYTE iBuff[64];
+  BYTE idx = 0;
+// Change scope trigger to channel 4 (TMS/CS) falling edge
+BTS = 0;
+opCode = (lhB == 0) ? 0x81 : 0x83; 
+//oBuff[BTS++] = 0x81; // AN 108 3.6
+oBuff[BTS++] = opCode; // AN 108 3.6
+// Get data bits - returns state of pins, either input or output
+// on low byte of MPSSE
+ftS = FT_Write(ftH, oBuff, BTS, &NBS);
+// Read the low GPIO byte
+BTS = 0; // Reset output buffer pointer
+Sleep(2); // Wait for data to be transmitted and status to be returned 
+// by the device driver - see latency timer above
+// Check the receive buffer - there should be one byte
+ftS = FT_GetQueueStatus(ftH, &BTR);
+// Get the number of bytes in the FT2232H receive buffer
+ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
+if ((ftStatus != FT_OK) & (BTR != 1))
+{
+fprintf(stderr, "Error - GPIO cannot be read\n");
+FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
+FT_Close(ftH);                 // Close the USB port
+//return 1;                             // Exit with error
+exit(1);                             // Exit with error
+}
+else {
+L1IFStat = iBuff[0]; // Capture state for global status variable
+retVal = L1IFStat;   // Return the GPIO value to the caller
+//printf("The GPIO low-byte = 0x%X\n", InputBuffer[0]);
+fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
+//antennaConnected = ((InputBuffer[0] & 0x20) >> 5) == 1 ? true : false; 
+//printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
+// The input buffer only contains one valid byte at location 0
+// Modify the GPIO data (TMS/CS only) and write it back
+/* End GPIO Read*/
+}
 }
 
 void displayDevInfo(FT_DEVICE_LIST_INFO_NODE * dInfo, DWORD numD) {
@@ -181,6 +231,9 @@ int main()
 
 /* Now READ the GPIO to See if Antenna is attached*/
 /* Write function bool testAntennaConnected(ftdiHandle) */
+readGPIObyte(ftdiHandle, 0);
+antennaConnected = ((L1IFStat & 0x20) >> 5) == 1 ? true : false;
+/*
 // Change scope trigger to channel 4 (TMS/CS) falling edge
 dwNumBytesToSend = 0;
 OutputBuffer[dwNumBytesToSend++] = 0x81; // AN 108 3.6
@@ -201,15 +254,17 @@ printf("Error - GPIO cannot be read\n");
 FT_SetBitMode(ftdiHandle, 0x0, 0x00); // Reset the port to disable MPSSE
 FT_Close(ftdiHandle);                 // Close the USB port
 return 1;                             // Exit with error
-}
-else {
-printf("The GPIO low-byte = 0x%X\n", InputBuffer[0]);
-antennaConnected = ((InputBuffer[0] & 0x20) >> 5) == 1 ? true : false; 
-printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
+} */
+//else {
+//printf("The GPIO low-byte = 0x%X\n", InputBuffer[0]);
+//antennaConnected = ((InputBuffer[0] & 0x20) >> 5) == 1 ? true : false; 
+
+//printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 // The input buffer only contains one valid byte at location 0
 // Modify the GPIO data (TMS/CS only) and write it back
+//}
+printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 /* End GPIO Read*/
-}
 
 printf("Press <Enter> to continue\n");
 getchar(); // wait for a carriage return
