@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 FT_STATUS ftStatus;
-BYTE L1IFStat;
+WORD L1IFStat;
 WORD i = 0;
 
 bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
@@ -124,14 +124,20 @@ FT_Close(ftH);                 // Close the USB port
 exit(1);                             // Exit with error
 }
 else {
-L1IFStat = iBuff[0]; // Capture state for global status variable
-retVal = L1IFStat;   // Return the GPIO value to the caller
-//printf("The GPIO low-byte = 0x%X\n", InputBuffer[0]);
+
+retVal = iBuff[0]; 
+
+if (lhB == 0) {
+L1IFStat |= retVal & 0x00FF;
+}
+else {
+L1IFStat |= ((retVal & 0x00FF) << 8) & 0xFF00;
+}
 fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
 //antennaConnected = ((InputBuffer[0] & 0x20) >> 5) == 1 ? true : false; 
 //printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 // The input buffer only contains one valid byte at location 0
-// Modify the GPIO data (TMS/CS only) and write it back
+return retVal;
 /* End GPIO Read*/
 }
 }
@@ -155,6 +161,7 @@ int main()
   FT_HANDLE ftdiHandle;
   BYTE OutputBuffer[64]; // Buffer to hold MPSSE commands sent to FT2232H
   BYTE InputBuffer[64];  // Buffer to hold Data bytes read from FT2232H
+  BYTE GPIOdata = 0;
 //  DWORD dwClockDivisor = 29;      // Value of clock divisor, SCL frequency...
   DWORD dwNumBytesToSend = 0;     // Index of output buffer
   DWORD dwNumBytesToRead = 0;    
@@ -213,7 +220,7 @@ int main()
 		return 1;
 	}
   else{
-    printf("AN 135 Section 4.2 complete\n");
+//    fprintf(stderr, "AN 135 Section 4.2 complete\n");
   }
 	Sleep(50);	// Wait for all the USB stuff to complete and work
 
@@ -231,38 +238,17 @@ int main()
 
 /* Now READ the GPIO to See if Antenna is attached*/
 /* Write function bool testAntennaConnected(ftdiHandle) */
-readGPIObyte(ftdiHandle, 0);
-antennaConnected = ((L1IFStat & 0x20) >> 5) == 1 ? true : false;
-/*
-// Change scope trigger to channel 4 (TMS/CS) falling edge
-dwNumBytesToSend = 0;
-OutputBuffer[dwNumBytesToSend++] = 0x81; // AN 108 3.6
-// Get data bits - returns state of pins, either input or output
-// on low byte of MPSSE
-ftStatus = FT_Write(ftdiHandle, OutputBuffer, dwNumBytesToSend, &dwNumBytesSent);
-// Read the low GPIO byte
-dwNumBytesToSend = 0; // Reset output buffer pointer
-Sleep(2); // Wait for data to be transmitted and status to be returned 
-// by the device driver - see latency timer above
-// Check the receive buffer - there should be one byte
-ftStatus = FT_GetQueueStatus(ftdiHandle, &dwNumBytesToRead);
-// Get the number of bytes in the FT2232H receive buffer
-ftStatus |= FT_Read(ftdiHandle, &InputBuffer, dwNumBytesToRead, &dwNumBytesRead);
-if ((ftStatus != FT_OK) & (dwNumBytesToRead != 1))
-{
-printf("Error - GPIO cannot be read\n");
-FT_SetBitMode(ftdiHandle, 0x0, 0x00); // Reset the port to disable MPSSE
-FT_Close(ftdiHandle);                 // Close the USB port
-return 1;                             // Exit with error
-} */
-//else {
-//printf("The GPIO low-byte = 0x%X\n", InputBuffer[0]);
-//antennaConnected = ((InputBuffer[0] & 0x20) >> 5) == 1 ? true : false; 
+GPIOdata = readGPIObyte(ftdiHandle, 0);
+antennaConnected = ((L1IFStat & 0x0020) >> 5) == 1 ? true : false;
+fprintf(stderr, "bit 0: %s\n", ((GPIOdata & 0x01) == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 1: %s\n", ((GPIOdata & 0x02) >> 1 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 2: %s\n", ((GPIOdata & 0x04) >> 2 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 3: %s\n", ((GPIOdata & 0x08) >> 3 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 4: %s\n", ((GPIOdata & 0x10) >> 4 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 5 (Ant): %s\n", ((GPIOdata & 0x20) >> 5 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 6: %s\n", ((GPIOdata & 0x40) >> 6 == 1) ? "HI" : "LO");
+fprintf(stderr, "bit 7: %s\n", ((GPIOdata & 0x80) >> 7 == 1) ? "HI" : "LO");
 
-//printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
-// The input buffer only contains one valid byte at location 0
-// Modify the GPIO data (TMS/CS only) and write it back
-//}
 printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 /* End GPIO Read*/
 
