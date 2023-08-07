@@ -11,6 +11,8 @@
 
 FT_STATUS ftStatus;
 WORD L1IFStat;
+BYTE loGPIOdirection = 0xCB; // 1100 1011
+BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
 
 bool configureMPSSE(FT_HANDLE ftH)
 { /* AN 135 Section 4.2*/
@@ -148,7 +150,7 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
   ftS = FT_GetQueueStatus(ftH, &BTR);
   // Get the number of bytes in the FT2232H receive buffer
   ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
-  if ((ftStatus != FT_OK) & (BTR != 1))
+  if ((ftS != FT_OK) && (BTR != 1))
   {
     fprintf(stderr, "Error - GPIO cannot be read\n");
     FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
@@ -157,6 +159,83 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
     exit(1); // Exit with error
   }
   else
+  {
+    retVal = iBuff[0];
+    if (lhB == 0)
+    {
+      L1IFStat = retVal & 0x00FF;
+    }
+    else
+    {
+      L1IFStat = ((retVal & 0x00FF) << 8) & 0xFF00;
+    }
+    // fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
+    // The input buffer only contains one valid byte at location 0
+    return retVal;
+  }
+} /* End AN 135 Section 5.5 GPIO Read*/
+
+void toggleIDLE(FT_HANDLE ftH){
+  FT_STATUS ftS;
+  DWORD BTS = 0;   // Bytes to send
+  DWORD BTR = 0;   // Bytes to read
+  DWORD NBS = 0;   // Number of bytes sent
+  DWORD NBR = 0;   // Number of bytes read
+  BYTE opCode = 0x80; // FTDI OPCODE
+  BYTE Value = (BYTE) (L1IFStat & 0x00FF);
+  BYTE direction = loGPIOdirection; 
+  BYTE oBuff[64];
+  BYTE iBuff[64];
+  BYTE idx = 0;
+//  bool IDLEhi = ((Value & 0x40) >> 6) == 1 ? true : false;
+//  BYTE loGPIOdirection = 0xCB; // 1100 1011
+//  BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
+  Value ^= 0x40; // This should toggle the IDLE bit
+  //Value ^= 0x80; // This should toggle the SHDN bit
+  //BTS = 0;
+  oBuff[BTS++] = opCode;
+  oBuff[BTS++] = Value;
+  oBuff[BTS++] = direction;
+
+  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
+  if ((ftS != FT_OK) && (NBS !=3 )){
+    fprintf(stderr, "Error - GPIO not written\n");
+    FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
+    FT_Close(ftH);                 // Close the USB port
+    exit(1); // Exit with error
+  }
+  Sleep(2); // Wait for data to be transmitted and status to be returned
+  opCode = 0x81;
+  BTS = 0;
+  oBuff[BTS++] = opCode;
+  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
+  BTS = 0;
+  Sleep(2);
+  ftS = FT_GetQueueStatus(ftH, &BTR);
+  ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
+  if ((ftS != FT_OK) && (BTR != 1))
+  {
+    fprintf(stderr, "Error - GPIO cannot be read\n");
+    FT_SetBitMode(ftH, 0x00, 0x00);
+    FT_Close(ftH);
+    exit(1);
+  }
+  else{
+    fprintf(stderr, "IDLE:0x%.2X\n", iBuff[0] );
+  }
+  /*
+  ftS = FT_GetQueueStatus(ftH, &BTR);
+  // Get the number of bytes in the FT2232H receive buffer
+  ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
+  if ((ftStatus != FT_OK) && (BTR != 1))
+  {
+    fprintf(stderr, "Error - GPIO cannot be read\n");
+    FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
+    FT_Close(ftH);                 // Close the USB port
+    // return 1;                             // Exit with error
+    exit(1); // Exit with error
+  } */
+/*  else
   {
     retVal = iBuff[0];
     if (lhB == 0)
@@ -170,8 +249,8 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
     // fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
     // The input buffer only contains one valid byte at location 0
     return retVal;
-  }
-} /* End AN 135 Section 5.5 GPIO Read*/
+  } */
+}
 
 void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, DWORD numD)
 {
@@ -293,8 +372,15 @@ int main()
   antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
   printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 
-  // printf("Press <Enter> to continue\n");
-  // getchar(); // wait for a carriage return, or don't
+toggleIDLE(ftdiHandle);
+
+  GPIOdata = readGPIObyte(ftdiHandle, 0);
+  displayL1IFStatus(L1IFStat);
+  printf("IDLE? %s\n", ((L1IFStat & 0x40) >> 6) == true ? "no" : "yes");
+
+   // GPIO retains its setting until its reset
+   printf("Press <Enter> to continue\n");
+   getchar(); // wait for a carriage return, or don't
 
   FT_SetBitMode(ftdiHandle, 0x00, 0x00); // Reset MPSSE
   FT_Close(ftdiHandle);                  // Close Port
