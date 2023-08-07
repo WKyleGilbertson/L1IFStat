@@ -4,7 +4,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+//#include <string.h>
 #include <stdio.h>
+
+//#define CURRENT_NAME
 
 FT_STATUS ftStatus;
 WORD L1IFStat;
@@ -210,6 +213,7 @@ void displayL1IFStatus(WORD boardStatus)
 int main()
 {
   FT_HANDLE ftdiHandle;
+//  BYTE Name[15];
   BYTE GPIOdata = 0;
   bool devMPSSEConfig = false;
   bool antennaConnected = false;
