@@ -4,15 +4,18 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
-//#include <string.h>
+// #include <string.h>
 #include <stdio.h>
-
-//#define CURRENT_NAME
 
 FT_STATUS ftStatus;
 WORD L1IFStat;
 BYTE loGPIOdirection = 0xCB; // 1100 1011
-BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
+BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
+enum gpio
+{
+  IDLE = 0x40,
+  SHDN = 0x80
+};
 
 bool configureMPSSE(FT_HANDLE ftH)
 { /* AN 135 Section 4.2*/
@@ -123,7 +126,7 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
 } /* End AN 135 Section 5.3 "Configure the FTDI MPSSE" */
 
 BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
-{ /* AN 135 Section 5.5 GPIO Read*/
+{                                          /* AN 135 Section 5.5 GPIO Read*/
   BYTE retVal = 0x00;
   FT_STATUS ftS;
   DWORD BTS = 0;   // Bytes to send
@@ -175,37 +178,48 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
   }
 } /* End AN 135 Section 5.5 GPIO Read*/
 
-void toggleIDLE(FT_HANDLE ftH){
+void toggleGPIO(FT_HANDLE ftH, BYTE bits)
+{
   FT_STATUS ftS;
-  DWORD BTS = 0;   // Bytes to send
-  DWORD BTR = 0;   // Bytes to read
-  DWORD NBS = 0;   // Number of bytes sent
-  DWORD NBR = 0;   // Number of bytes read
-  BYTE opCode = 0x80; // FTDI OPCODE
-  BYTE Value = (BYTE) (L1IFStat & 0x00FF);
-  BYTE direction = loGPIOdirection; 
+  DWORD BTS = 0;      // Bytes to send
+  DWORD BTR = 0;      // Bytes to read
+  DWORD NBS = 0;      // Number of bytes sent
+  DWORD NBR = 0;      // Number of bytes read
+  BYTE opCode = 0x80; // FTDI OPCODE 0x80 = WRite Lower Byte
+  BYTE Value = (BYTE)(L1IFStat & 0x00FF);
+  BYTE direction = loGPIOdirection;
   BYTE oBuff[64];
   BYTE iBuff[64];
   BYTE idx = 0;
-//  bool IDLEhi = ((Value & 0x40) >> 6) == 1 ? true : false;
-//  BYTE loGPIOdirection = 0xCB; // 1100 1011
-//  BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
-  Value ^= 0x40; // This should toggle the IDLE bit
-  //Value ^= 0x80; // This should toggle the SHDN bit
-  //BTS = 0;
+  //  BYTE loGPIOdirection = 0xCB; // 1100 1011
+  //  BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
+  switch (bits)
+  {
+  case 0x40:
+    Value ^= IDLE;
+    break;
+  case 0x80:
+    Value ^= SHDN;
+    break;
+  default:
+    fprintf(stderr, "Idle or shutdown only\n");
+    break;
+  }
+  // BTS = 0;
   oBuff[BTS++] = opCode;
   oBuff[BTS++] = Value;
   oBuff[BTS++] = direction;
 
   ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  if ((ftS != FT_OK) && (NBS !=3 )){
+  if ((ftS != FT_OK) && (NBS != 3))
+  {
     fprintf(stderr, "Error - GPIO not written\n");
     FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
     FT_Close(ftH);                 // Close the USB port
-    exit(1); // Exit with error
+    exit(1);                       // Exit with error
   }
-  Sleep(2); // Wait for data to be transmitted and status to be returned
-  opCode = 0x81;
+  Sleep(2);      // Wait for data to be transmitted and status to be returned
+  opCode = 0x81; // FTDI OPCODE 0x81 = Read Lower Byte
   BTS = 0;
   oBuff[BTS++] = opCode;
   ftS = FT_Write(ftH, oBuff, BTS, &NBS);
@@ -220,8 +234,9 @@ void toggleIDLE(FT_HANDLE ftH){
     FT_Close(ftH);
     exit(1);
   }
-  else{
-    fprintf(stderr, "IDLE:0x%.2X\n", iBuff[0] );
+  else
+  {
+    fprintf(stderr, "IDLE:0x%.2X\n", iBuff[0]);
   }
   /*
   ftS = FT_GetQueueStatus(ftH, &BTR);
@@ -235,21 +250,21 @@ void toggleIDLE(FT_HANDLE ftH){
     // return 1;                             // Exit with error
     exit(1); // Exit with error
   } */
-/*  else
-  {
-    retVal = iBuff[0];
-    if (lhB == 0)
+  /*  else
     {
-      L1IFStat |= retVal & 0x00FF;
-    }
-    else
-    {
-      L1IFStat |= ((retVal & 0x00FF) << 8) & 0xFF00;
-    }
-    // fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
-    // The input buffer only contains one valid byte at location 0
-    return retVal;
-  } */
+      retVal = iBuff[0];
+      if (lhB == 0)
+      {
+        L1IFStat |= retVal & 0x00FF;
+      }
+      else
+      {
+        L1IFStat |= ((retVal & 0x00FF) << 8) & 0xFF00;
+      }
+      // fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
+      // The input buffer only contains one valid byte at location 0
+      return retVal;
+    } */
 }
 
 void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, DWORD numD)
@@ -289,15 +304,26 @@ void displayL1IFStatus(WORD boardStatus)
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-int main()
+// #define CURRENT_NAME "L1IF"
+int main(int argc, char *argv[])
 {
   FT_HANDLE ftdiHandle;
-//  BYTE Name[15];
+  //  BYTE Name[15];
   BYTE GPIOdata = 0;
+  BYTE ch = ' ';
+  BYTE name[15];
   bool devMPSSEConfig = false;
   bool antennaConnected = false;
+  bool noPause = false;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
+
+  if ((argc == 2) && (argv[1][0] == '~'))
+  {
+    noPause = true;
+  }
+  //  strcpy(name, CURRENT_NAME);
+  //  printf("%s\n", CURRENT_NAME);
 
   ftStatus = FT_CreateDeviceInfoList(&numDevs); // AN_135 4.1 Step 1
   if (ftStatus == FT_OK)
@@ -372,15 +398,32 @@ int main()
   antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
   printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 
-toggleIDLE(ftdiHandle);
-
-  GPIOdata = readGPIObyte(ftdiHandle, 0);
-  displayL1IFStatus(L1IFStat);
-  printf("IDLE? %s\n", ((L1IFStat & 0x40) >> 6) == true ? "no" : "yes");
-
-   // GPIO retains its setting until its reset
-   printf("Press <Enter> to continue\n");
-   getchar(); // wait for a carriage return, or don't
+  // GPIO retains its setting until its reset
+  if (noPause == false)
+  {
+    while (ch != 0x0D)
+    {
+      printf("Press <Enter> to continue, 's' for shutdown, or 'i' for idle\n");
+      ch = getch(); // wait for a carriage return, or don't
+      switch (ch)
+      {
+      case 's':
+        toggleGPIO(ftdiHandle, SHDN);
+        GPIOdata = readGPIObyte(ftdiHandle, 0);
+        displayL1IFStatus(L1IFStat);
+        break;
+      case 'i':
+        toggleGPIO(ftdiHandle, IDLE);
+        GPIOdata = readGPIObyte(ftdiHandle, 0);
+        displayL1IFStatus(L1IFStat);
+        break;
+      default:
+        break;
+      }
+      // printf("Got it? 0x%.2X ", ch);
+      // ch = getch(); // wait for a carriage return, or don't
+    }
+  }
 
   FT_SetBitMode(ftdiHandle, 0x00, 0x00); // Reset MPSSE
   FT_Close(ftdiHandle);                  // Close Port
