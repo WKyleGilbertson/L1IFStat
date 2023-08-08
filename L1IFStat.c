@@ -2,12 +2,10 @@
 #include "inc/FTD2XX.h"
 #include <windows.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-// #include <string.h>
+//#include <stdlib.h>
+//#include <stdint.h>
 #include <stdio.h>
 
-FT_STATUS ftStatus;
 WORD L1IFStat;
 BYTE loGPIOdirection = 0xCB; // 1100 1011
 BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
@@ -236,35 +234,9 @@ void toggleGPIO(FT_HANDLE ftH, BYTE bits)
   }
   else
   {
-    fprintf(stderr, "IDLE:0x%.2X\n", iBuff[0]);
+    fprintf(stderr, "GPIO low-byte:0x%.2X\n", iBuff[0]);
+    L1IFStat = (WORD) iBuff[0] & 0x00FF;
   }
-  /*
-  ftS = FT_GetQueueStatus(ftH, &BTR);
-  // Get the number of bytes in the FT2232H receive buffer
-  ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
-  if ((ftStatus != FT_OK) && (BTR != 1))
-  {
-    fprintf(stderr, "Error - GPIO cannot be read\n");
-    FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
-    FT_Close(ftH);                 // Close the USB port
-    // return 1;                             // Exit with error
-    exit(1); // Exit with error
-  } */
-  /*  else
-    {
-      retVal = iBuff[0];
-      if (lhB == 0)
-      {
-        L1IFStat |= retVal & 0x00FF;
-      }
-      else
-      {
-        L1IFStat |= ((retVal & 0x00FF) << 8) & 0xFF00;
-      }
-      // fprintf(stderr, "The GPIO low-byte = 0x%X\n", retVal);
-      // The input buffer only contains one valid byte at location 0
-      return retVal;
-    } */
 }
 
 void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, DWORD numD)
@@ -304,14 +276,12 @@ void displayL1IFStatus(WORD boardStatus)
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-// #define CURRENT_NAME "L1IF"
 int main(int argc, char *argv[])
 {
+  FT_STATUS ftStatus;
   FT_HANDLE ftdiHandle;
-  //  BYTE Name[15];
   BYTE GPIOdata = 0;
   BYTE ch = ' ';
-  BYTE name[15];
   bool devMPSSEConfig = false;
   bool antennaConnected = false;
   bool noPause = false;
@@ -322,8 +292,6 @@ int main(int argc, char *argv[])
   {
     noPause = true;
   }
-  //  strcpy(name, CURRENT_NAME);
-  //  printf("%s\n", CURRENT_NAME);
 
   ftStatus = FT_CreateDeviceInfoList(&numDevs); // AN_135 4.1 Step 1
   if (ftStatus == FT_OK)
