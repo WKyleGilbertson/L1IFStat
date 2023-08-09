@@ -6,14 +6,23 @@
 //#include <stdint.h>
 #include <stdio.h>
 
+#define MLEN 64
+
 WORD L1IFStat;
 BYTE loGPIOdirection = 0xCB; // 1100 1011
 BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
+
 enum gpio
 {
   IDLE = 0x40,
   SHDN = 0x80
 };
+
+typedef struct {
+BYTE MSG[MLEN];
+DWORD SZE;
+DWORD CNT;
+} PKT;
 
 bool configureMPSSE(FT_HANDLE ftH)
 { /* AN 135 Section 4.2*/
@@ -45,23 +54,18 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
   //////////////////////////////////////////////////////////////////
   // Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
   //////////////////////////////////////////////////////////////////
-  // Enable internal loop-back AN 135 Section 5.3.1
   bool retVal = false;
   FT_STATUS ftS;
-  DWORD BTS = 0; // Bytes to send
-  DWORD BTR = 0; // Bytes to read
-  DWORD NBS = 0; // Number of bytes sent
-  DWORD NBR = 0; // Number of bytes read
-  BYTE oBuff[64];
-  BYTE iBuff[64];
+  PKT tx, rx;
   BYTE idx = 0;
 
-  BTS = 0;
-  oBuff[BTS++] = 0x84; // Enable loopback AN 108 3.7
-  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  NBS = 0;
-  ftS = FT_GetQueueStatus(ftH, &NBR);
-  if (NBR != 0)
+  // Enable internal loop-back AN 135 Section 5.3.1
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = 0x84;// Enable loopback AN 108 3.7
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  tx.SZE = 0;
+  ftS = FT_GetQueueStatus(ftH, &rx.CNT);
+  if (rx.CNT != 0)
   {
     fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
     FT_SetBitMode(ftH, 0x00, 0x00);
@@ -73,20 +77,20 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
     //    fprintf(stderr, "Loopback Enabled\n");
   }
 
-  BTS = 0;
-  oBuff[BTS++] = cmd;                    // Add BAD command ¡®0xAA¡¯
-  ftS = FT_Write(ftH, oBuff, BTS, &NBS); // Send off the BAD commands
-                                         //	fprintf(stderr, "Bytes Sent: %d\n", NBS);
-  BTS = 0;                               // Clear output buffer
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = cmd;// Add BAD command ¡®0xAA¡¯
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the BAD commands
+//	fprintf(stderr, "Bytes Sent: %d\n", tx.CNT);
+  tx.SZE = 0;// Clear output buffer
   do
   {
-    ftS = FT_GetQueueStatus(ftH, &BTR);   // Get the number of bytes in the device input buffer
-  } while ((BTR == 0) && (ftS == FT_OK)); // or Timeout
+    ftS = FT_GetQueueStatus(ftH, &rx.SZE);   // Get the number of bytes in the device input buffer
+  } while ((rx.SZE == 0) && (ftS == FT_OK)); // or Timeout
 
-  ftS = FT_Read(ftH, iBuff, BTR, &NBR); // Read out the data from input buffer
-  for (idx = 0; idx < (NBR - 1); idx++) // Check if Bad command and echo command received
+  ftS = FT_Read(ftH, rx.MSG, rx.SZE, &rx.CNT); // Read out the data from input buffer
+  for (idx = 0; idx < (rx.CNT - 1); idx++) // Check if Bad command and echo command received
   {
-    if ((iBuff[idx] == 0xFA) && (iBuff[idx + 1] == cmd))
+    if ((rx.MSG[idx] == 0xFA) && (rx.MSG[idx + 1] == cmd))
     {
       retVal = true;
       break;
@@ -101,13 +105,14 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
   {
     //    fprintf(stderr, "Bad command 0x%.2X was Echoed\n", cmd);
   }
+
   // Disable internal loop-back
-  BTS = 0;
-  oBuff[BTS++] = 0x85; // Disable loopback AN 108 3.7
-  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  BTS = 0;
-  ftS = FT_GetQueueStatus(ftH, &NBR);
-  if (NBR != 0)
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = 0x85; // Disable loopback AN 108 3.7
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  tx.SZE = 0;
+  ftS = FT_GetQueueStatus(ftH, &rx.CNT);
+  if (rx.CNT != 0)
   {
     fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
     FT_SetBitMode(ftH, 0x00, 0x00);
@@ -179,18 +184,14 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
 void toggleGPIO(FT_HANDLE ftH, BYTE bits)
 {
   FT_STATUS ftS;
-  DWORD BTS = 0;      // Bytes to send
-  DWORD BTR = 0;      // Bytes to read
-  DWORD NBS = 0;      // Number of bytes sent
-  DWORD NBR = 0;      // Number of bytes read
+  PKT tx, rx;
+  BYTE idx = 0;
   BYTE opCode = 0x80; // FTDI OPCODE 0x80 = WRite Lower Byte
   BYTE Value = (BYTE)(L1IFStat & 0x00FF);
   BYTE direction = loGPIOdirection;
-  BYTE oBuff[64];
-  BYTE iBuff[64];
-  BYTE idx = 0;
   //  BYTE loGPIOdirection = 0xCB; // 1100 1011
   //  BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
+
   switch (bits)
   {
   case 0x40:
@@ -203,13 +204,13 @@ void toggleGPIO(FT_HANDLE ftH, BYTE bits)
     fprintf(stderr, "Idle or shutdown only\n");
     break;
   }
-  // BTS = 0;
-  oBuff[BTS++] = opCode;
-  oBuff[BTS++] = Value;
-  oBuff[BTS++] = direction;
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = opCode;
+  tx.MSG[tx.SZE++] = Value;
+  tx.MSG[tx.SZE++] = direction;
 
-  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  if ((ftS != FT_OK) && (NBS != 3))
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  if ((ftS != FT_OK) && (tx.CNT != 3))
   {
     fprintf(stderr, "Error - GPIO not written\n");
     FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
@@ -218,14 +219,15 @@ void toggleGPIO(FT_HANDLE ftH, BYTE bits)
   }
   Sleep(2);      // Wait for data to be transmitted and status to be returned
   opCode = 0x81; // FTDI OPCODE 0x81 = Read Lower Byte
-  BTS = 0;
-  oBuff[BTS++] = opCode;
-  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  BTS = 0;
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = opCode;
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  tx.SZE = 0;
   Sleep(2);
-  ftS = FT_GetQueueStatus(ftH, &BTR);
-  ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
-  if ((ftS != FT_OK) && (BTR != 1))
+  ftS = FT_GetQueueStatus(ftH, &rx.SZE);
+  ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
+  if ((ftS != FT_OK) && (rx.SZE != 1))
+//  if ((ftS != FT_OK) && (rx.CNT != 1)) // I think this should be NBR
   {
     fprintf(stderr, "Error - GPIO cannot be read\n");
     FT_SetBitMode(ftH, 0x00, 0x00);
@@ -234,8 +236,8 @@ void toggleGPIO(FT_HANDLE ftH, BYTE bits)
   }
   else
   {
-    fprintf(stderr, "GPIO low-byte:0x%.2X\n", iBuff[0]);
-    L1IFStat = (WORD) iBuff[0] & 0x00FF;
+    fprintf(stderr, "GPIO low-byte:0x%.2X\n", rx.MSG[0]);
+    L1IFStat = (WORD) rx.MSG[0] & 0x00FF;
   }
 }
 
