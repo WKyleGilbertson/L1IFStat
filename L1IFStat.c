@@ -133,47 +133,31 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
   BYTE retVal = 0x00;
   FT_STATUS ftS;
   PKT tx, rx;
-  BYTE opCode = 0; // FTDI OPCODE
   BYTE idx = 0;
-/*  DWORD BTS = 0;   // Bytes to send
-  DWORD BTR = 0;   // Bytes to read
-  DWORD NBS = 0;   // Number of bytes sent
-  DWORD NBR = 0;   // Number of bytes read
-  BYTE oBuff[64];
-  BYTE iBuff[64]; */
+  BYTE opCode = 0;                            // FTDI OPCODE AN 108 Section 3.6
   // Change scope trigger to channel 4 (TMS/CS) falling edge
-//  BTS = 0;
   tx.SZE = 0;
   opCode = (lhB == 0) ? 0x81 : 0x83;
-//  oBuff[BTS++] = opCode; // AN 108 3.6
-  tx.MSG[tx.SZE++] = opCode; // AN 108 3.6
+  tx.MSG[tx.SZE++] = opCode;
   // Get data bits - returns state of pins, either input or output
   // on low byte of MPSSE
-//  ftS = FT_Write(ftH, oBuff, BTS, &NBS);
-  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
-  // Read the low GPIO byte
-//  BTS = 0;  // Reset output buffer pointer
-  tx.SZE = 0;  // Reset output buffer pointer
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Read the low GPIO byte
+  tx.SZE = 0;                               // Reset output buffer pointer
   Sleep(2); // Wait for data to be transmitted and status to be returned
   // by the device driver - see latency timer above
   // Check the receive buffer - there should be one byte
-//  ftS = FT_GetQueueStatus(ftH, &BTR);
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
   // Get the number of bytes in the FT2232H receive buffer
-//  ftS |= FT_Read(ftH, &iBuff, BTR, &NBR);
   ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
-//  if ((ftS != FT_OK) && (BTR != 1))
   if ((ftS != FT_OK) && (rx.SZE != 1))
   {
     fprintf(stderr, "Error - GPIO cannot be read\n");
     FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
     FT_Close(ftH);                 // Close the USB port
-    // return 1;                             // Exit with error
     exit(1); // Exit with error
   }
   else
   {
-//    retVal = iBuff[0];
     retVal = rx.MSG[0];
     if (lhB == 0)
     {
