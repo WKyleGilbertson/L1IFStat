@@ -404,8 +404,8 @@ int main(int argc, char *argv[])
   bool devMPSSEConfig = false;
   bool antennaConnected = false;
   bool noPause = false;
-//  bool configGPSCLK = false;
-  bool configGPSCLK = true;
+  bool configGPSCLK = false;
+//  bool configGPSCLK = true;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
