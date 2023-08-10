@@ -10,23 +10,23 @@
 
 #define MemSize 32
 
-const BYTE SPIDATALENGTH = 32;
+//const BYTE SPIDATALENGTH = 32;
 const BYTE AA_ECHO_CMD_1 = 0xAA;
 const BYTE AB_ECHO_CMD_2 = 0xAB;
 const BYTE BAD_COMMAND_RESPONSE = 0xFA;
 // How to clock the data out of FTDI chip
-const BYTE MSB_RISING_EDGE_CLOCK_BYTE_OUT = 0x10;
-const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_OUT = 0x11;
-const BYTE MSB_RISING_EDGE_CLOCK_BIT_OUT = 0x12;
+//const BYTE MSB_RISING_EDGE_CLOCK_BYTE_OUT = 0x10;
+//const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_OUT = 0x11;
+//const BYTE MSB_RISING_EDGE_CLOCK_BIT_OUT = 0x12;
 const BYTE MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13;
 // How to clock data in to FTDI chip .... WE DON'T
-const BYTE MSB_RISING_EDGE_CLOCK_BYTE_IN = 0x20;
-const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = 0x22;
-const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = 0x24;
-const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = 0x26;
+//const BYTE MSB_RISING_EDGE_CLOCK_BYTE_IN = 0x20;
+//const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = 0x22;
+//const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = 0x24;
+//const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = 0x26;
 
 WORD L1IFStat;
-BYTE loGPIOdirection = 0xCB; // 1100 1011
+BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In 
 BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
 
 enum gpio
@@ -107,7 +107,6 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   return true;
 }
 
-// FT_STATUS GPSConfig(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
 bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
 {
   FT_STATUS ftS;
@@ -118,7 +117,7 @@ bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
   DATA |= (ADDR & 0x0F);
   SPI_CSEnable(&tx);
   //
-  tx.MSG[tx.SZE++] = MSB_FALLING_EDGE_CLOCK_BIT_OUT;
+  tx.MSG[tx.SZE++] = MSB_FALLING_EDGE_CLOCK_BIT_OUT; // AN 108 Section 3.3.4
   tx.MSG[tx.SZE++] = 7;
   // OutputBuffer[dwNumBytesToSend++] = '\x9A';
   tx.MSG[tx.SZE++] = (DATA & 0xFF000000) >> 24;
@@ -493,10 +492,11 @@ int main(int argc, char *argv[])
       /*      // GPSConfig(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
             //GPSConfig(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
             // GPSConfig(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz */
+      // Notice the trailing zero on the data... that's where the address goes
       fprintf(stderr, "Sending Clock Speed Change\n");
-      //      sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+      //sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
       sendSPItoMAX(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
-                                                  //      sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
+      //sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
       Sleep(20);
     }
   }
