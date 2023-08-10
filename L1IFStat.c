@@ -49,20 +49,20 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
     pkt->MSG[pkt->SZE++] = 0x80; // GPIO command for ADBUS
     pkt->MSG[pkt->SZE++] = 0x00; // Chip Select is Active Low
     pkt->MSG[pkt->SZE++] = 0x0b;
-//    pkt->MSG[pkt->SZE++] = 0xC3; // Value     Chip Select is Active Low
-//    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
+    //    pkt->MSG[pkt->SZE++] = 0xC3; // Value     Chip Select is Active Low
+    //    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
 void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
-  for (int loop = 0; loop < 5; loop++)  // One 0x80 command can keep 0.2 us
-  {                                     // Do 5 times to stay in for 1 us
+  for (int loop = 0; loop < 5; loop++) // One 0x80 command can keep 0.2 us
+  {                                    // Do 5 times to stay in for 1 us
     pkt->MSG[pkt->SZE++] = 0x80;
-    pkt->MSG[pkt->SZE++] = 0x08;  // Deselect Chip
+    pkt->MSG[pkt->SZE++] = 0x08; // Deselect Chip
     pkt->MSG[pkt->SZE++] = 0x0b;
-//    pkt->MSG[pkt->SZE++] = 0xCB; // Value     Deselect Chip
-//    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
+    //    pkt->MSG[pkt->SZE++] = 0xCB; // Value     Deselect Chip
+    //    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
@@ -74,7 +74,7 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   BYTE idx = 0;
   DWORD dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
                              // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
-                             ////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////
   // Configure the MPSSE for SPI communication with EEPROM
   //////////////////////////////////////////////////////////////////
   tx.SZE = 0;
@@ -85,8 +85,8 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   tx.SZE = 0;                                   // Clear output buffer
 
   tx.MSG[tx.SZE++] = 0x80; // Command to set directions of lower 8 pins and force value on bits set as output
-//  tx.MSG[tx.SZE++] = 0x00; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
-//  tx.MSG[tx.SZE++] = 0x0b; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+                           //  tx.MSG[tx.SZE++] = 0x00; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+                           //  tx.MSG[tx.SZE++] = 0x0b; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
   tx.MSG[tx.SZE++] = 0xCB; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
   tx.MSG[tx.SZE++] = 0xCB; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
   // The SK clock frequency can be worked out by below algorithm with divide by 5 set as off
@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
   bool antennaConnected = false;
   bool noPause = false;
   bool configGPSCLK = false;
-//  bool configGPSCLK = true;
+  //  bool configGPSCLK = true;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
@@ -490,51 +490,51 @@ int main(int argc, char *argv[])
     }
     else
     {
-/*      // GPSConfig(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
-      //GPSConfig(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
-      // GPSConfig(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz */
+      /*      // GPSConfig(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+            //GPSConfig(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
+            // GPSConfig(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz */
       fprintf(stderr, "Sending Clock Speed Change\n");
-//      sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+      //      sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
       sendSPItoMAX(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
-//      sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
+                                                  //      sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
       Sleep(20);
     }
   }
-    /* Now READ the GPIO to See if Antenna is attached*/
-    GPIOdata = readGPIObyte(ftdiHandle, 0);
-    displayL1IFStatus(L1IFStat);
+  /* Now READ the GPIO to See if Antenna is attached*/
+  GPIOdata = readGPIObyte(ftdiHandle, 0);
+  displayL1IFStatus(L1IFStat);
 
-    antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
-    printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
+  antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
+  printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 
-    // GPIO retains its setting until its reset
-    if (noPause == false)
+  // GPIO retains its setting until its reset
+  if (noPause == false)
+  {
+    while (ch != 0x0D)
     {
-      while (ch != 0x0D)
+      printf("Press <Enter> to continue, 's' for shutdown, or 'i' for idle\n");
+      ch = getch(); // wait for a carriage return, or don't
+      switch (ch)
       {
-        printf("Press <Enter> to continue, 's' for shutdown, or 'i' for idle\n");
-        ch = getch(); // wait for a carriage return, or don't
-        switch (ch)
-        {
-        case 's':
-          toggleGPIO(ftdiHandle, SHDN);
-          GPIOdata = readGPIObyte(ftdiHandle, 0);
-          displayL1IFStatus(L1IFStat);
-          break;
-        case 'i':
-          toggleGPIO(ftdiHandle, IDLE);
-          GPIOdata = readGPIObyte(ftdiHandle, 0);
-          displayL1IFStatus(L1IFStat);
-          break;
-        default:
-          break;
-        }
-        // printf("Got it? 0x%.2X ", ch);
-        // ch = getch(); // wait for a carriage return, or don't
+      case 's':
+        toggleGPIO(ftdiHandle, SHDN);
+        GPIOdata = readGPIObyte(ftdiHandle, 0);
+        displayL1IFStatus(L1IFStat);
+        break;
+      case 'i':
+        toggleGPIO(ftdiHandle, IDLE);
+        GPIOdata = readGPIObyte(ftdiHandle, 0);
+        displayL1IFStatus(L1IFStat);
+        break;
+      default:
+        break;
       }
+      // printf("Got it? 0x%.2X ", ch);
+      // ch = getch(); // wait for a carriage return, or don't
     }
-
-    FT_SetBitMode(ftdiHandle, 0x00, 0x00); // Reset MPSSE
-    FT_Close(ftdiHandle);                  // Close Port
-    free(devInfo);
   }
+
+  FT_SetBitMode(ftdiHandle, 0x00, 0x00); // Reset MPSSE
+  FT_Close(ftdiHandle);                  // Close Port
+  free(devInfo);
+}
