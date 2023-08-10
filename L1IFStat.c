@@ -49,16 +49,20 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
     pkt->MSG[pkt->SZE++] = 0x80; // GPIO command for ADBUS
     pkt->MSG[pkt->SZE++] = 0x00; // Chip Select is Active Low
     pkt->MSG[pkt->SZE++] = 0x0b;
+//    pkt->MSG[pkt->SZE++] = 0xC3; // Value     Chip Select is Active Low
+//    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
 void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
-  for (int loop = 0; loop < 5; loop++)
-  {
+  for (int loop = 0; loop < 5; loop++)  // One 0x80 command can keep 0.2 us
+  {                                     // Do 5 times to stay in for 1 us
     pkt->MSG[pkt->SZE++] = 0x80;
-    pkt->MSG[pkt->SZE++] = 0x08; // Deselect Chip
+    pkt->MSG[pkt->SZE++] = 0x08;  // Deselect Chip
     pkt->MSG[pkt->SZE++] = 0x0b;
+//    pkt->MSG[pkt->SZE++] = 0xCB; // Value     Deselect Chip
+//    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
@@ -81,8 +85,10 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   tx.SZE = 0;                                   // Clear output buffer
 
   tx.MSG[tx.SZE++] = 0x80; // Command to set directions of lower 8 pins and force value on bits set as output
-  tx.MSG[tx.SZE++] = 0x00; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
-  tx.MSG[tx.SZE++] = 0x0b; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+//  tx.MSG[tx.SZE++] = 0x00; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+//  tx.MSG[tx.SZE++] = 0x0b; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+  tx.MSG[tx.SZE++] = 0xCB; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+  tx.MSG[tx.SZE++] = 0xCB; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
   // The SK clock frequency can be worked out by below algorithm with divide by 5 set as off
   // SK frequency  = 60MHz /((1 +  [(1 +0xValueH*256) OR 0xValueL])*2)
   tx.MSG[tx.SZE++] = 0x86;                          // Command to set clock divisor
@@ -102,7 +108,7 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
 }
 
 // FT_STATUS GPSConfig(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
-bool sendSPItoGPS(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
+bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
 {
   FT_STATUS ftS;
   PKT tx;
@@ -398,7 +404,8 @@ int main(int argc, char *argv[])
   bool devMPSSEConfig = false;
   bool antennaConnected = false;
   bool noPause = false;
-  bool configGPSCLK = false;
+//  bool configGPSCLK = false;
+  bool configGPSCLK = true;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
@@ -486,9 +493,10 @@ int main(int argc, char *argv[])
 /*      // GPSConfig(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
       //GPSConfig(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
       // GPSConfig(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz */
-//      sendSPItoGPS(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
-//      sendSPItoGPS(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
-      sendSPItoGPS(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
+      fprintf(stderr, "Sending Clock Speed Change\n");
+//      sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+      sendSPItoMAX(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
+//      sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
       Sleep(20);
     }
   }
