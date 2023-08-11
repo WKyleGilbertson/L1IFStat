@@ -2,12 +2,9 @@
 #include "inc/FTD2XX.h"
 #include <windows.h>
 #include <stdbool.h>
-// #include <stdlib.h>
-// #include <stdint.h>
 #include <stdio.h>
 
 #define MLEN 64
-
 #define MemSize 32
 
 //const BYTE SPIDATALENGTH = 32;
@@ -26,8 +23,8 @@ const BYTE MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13;
 //const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = 0x26;
 
 WORD L1IFStat;
-BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In 
-BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
+const BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In 
+const BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
 
 enum gpio
 {
@@ -47,10 +44,8 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
   for (int loop = 0; loop < 5; loop++)
   {
     pkt->MSG[pkt->SZE++] = 0x80; // GPIO command for ADBUS
-    pkt->MSG[pkt->SZE++] = 0x00; // Chip Select is Active Low
-    pkt->MSG[pkt->SZE++] = 0x0b;
-    //    pkt->MSG[pkt->SZE++] = 0xC3; // Value     Chip Select is Active Low
-    //    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
+    pkt->MSG[pkt->SZE++] = 0xC0; // Value -- Chip Select is Active Low
+    pkt->MSG[pkt->SZE++] = 0xCb; // Direction
   }
 }
 
@@ -58,11 +53,9 @@ void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
   for (int loop = 0; loop < 5; loop++) // One 0x80 command can keep 0.2 us
   {                                    // Do 5 times to stay in for 1 us
-    pkt->MSG[pkt->SZE++] = 0x80;
-    pkt->MSG[pkt->SZE++] = 0x08; // Deselect Chip
-    pkt->MSG[pkt->SZE++] = 0x0b;
-    //    pkt->MSG[pkt->SZE++] = 0xCB; // Value     Deselect Chip
-    //    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
+    pkt->MSG[pkt->SZE++] = 0x80; // AN 108 Section 3.6.1 Set Data bits LowByte
+    pkt->MSG[pkt->SZE++] = 0xC8; // Value -- Deselect Chip
+    pkt->MSG[pkt->SZE++] = 0xCb; // Direction
   }
 }
 
@@ -404,7 +397,7 @@ int main(int argc, char *argv[])
   bool antennaConnected = false;
   bool noPause = false;
   bool configGPSCLK = false;
-  //  bool configGPSCLK = true;
+  //bool configGPSCLK = true;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
