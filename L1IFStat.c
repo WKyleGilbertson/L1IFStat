@@ -7,23 +7,23 @@
 #define MLEN 64
 #define MemSize 32
 
-//const BYTE SPIDATALENGTH = 32;
+// const BYTE SPIDATALENGTH = 32;
 const BYTE AA_ECHO_CMD_1 = 0xAA;
 const BYTE AB_ECHO_CMD_2 = 0xAB;
 const BYTE BAD_COMMAND_RESPONSE = 0xFA;
 // How to clock the data out of FTDI chip
-//const BYTE MSB_RISING_EDGE_CLOCK_BYTE_OUT = 0x10;
-//const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_OUT = 0x11;
-//const BYTE MSB_RISING_EDGE_CLOCK_BIT_OUT = 0x12;
+// const BYTE MSB_RISING_EDGE_CLOCK_BYTE_OUT = 0x10;
+// const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_OUT = 0x11;
+// const BYTE MSB_RISING_EDGE_CLOCK_BIT_OUT = 0x12;
 const BYTE MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13;
 // How to clock data in to FTDI chip .... WE DON'T
-//const BYTE MSB_RISING_EDGE_CLOCK_BYTE_IN = 0x20;
-//const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = 0x22;
-//const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = 0x24;
-//const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = 0x26;
+// const BYTE MSB_RISING_EDGE_CLOCK_BYTE_IN = 0x20;
+// const BYTE MSB_RISING_EDGE_CLOCK_BIT_IN = 0x22;
+// const BYTE MSB_FALLING_EDGE_CLOCK_BYTE_IN = 0x24;
+// const BYTE MSB_FALLING_EDGE_CLOCK_BIT_IN = 0x26;
 
 WORD L1IFStat;
-const BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In 
+const BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In
 const BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
 
 enum gpio
@@ -45,7 +45,7 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
   {
     pkt->MSG[pkt->SZE++] = 0x80; // GPIO command for ADBUS
     pkt->MSG[pkt->SZE++] = 0xC0; // Value -- Chip Select is Active Low
-    pkt->MSG[pkt->SZE++] = 0xCb; // Direction
+    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
@@ -53,51 +53,10 @@ void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
   for (int loop = 0; loop < 5; loop++) // One 0x80 command can keep 0.2 us
   {                                    // Do 5 times to stay in for 1 us
-    pkt->MSG[pkt->SZE++] = 0x80; // AN 108 Section 3.6.1 Set Data bits LowByte
-    pkt->MSG[pkt->SZE++] = 0xC8; // Value -- Deselect Chip
-    pkt->MSG[pkt->SZE++] = 0xCb; // Direction
+    pkt->MSG[pkt->SZE++] = 0x80;       // AN 108 Section 3.6.1 Set Data bits LowByte
+    pkt->MSG[pkt->SZE++] = 0xC8;       // Value -- Deselect Chip
+    pkt->MSG[pkt->SZE++] = 0xCB;       // Direction
   }
-}
-
-bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
-{
-  bool retVal = false;
-  FT_STATUS ftS;
-  PKT tx;
-  BYTE idx = 0;
-  DWORD dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
-                             // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
-  ////////////////////////////////////////////////////////////////////
-  // Configure the MPSSE for SPI communication with EEPROM
-  //////////////////////////////////////////////////////////////////
-  tx.SZE = 0;
-  tx.MSG[tx.SZE++] = 0x8A;                      // Ensure disable clock divide by 5 for 60Mhz master clock
-  tx.MSG[tx.SZE++] = 0x97;                      // Ensure turn off adaptive clocking
-  tx.MSG[tx.SZE++] = 0x8D;                      // disable 3 phase data clock
-  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
-  tx.SZE = 0;                                   // Clear output buffer
-
-  tx.MSG[tx.SZE++] = 0x80; // Command to set directions of lower 8 pins and force value on bits set as output
-                           //  tx.MSG[tx.SZE++] = 0x00; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
-                           //  tx.MSG[tx.SZE++] = 0x0b; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
-  tx.MSG[tx.SZE++] = 0xCB; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
-  tx.MSG[tx.SZE++] = 0xCB; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
-  // The SK clock frequency can be worked out by below algorithm with divide by 5 set as off
-  // SK frequency  = 60MHz /((1 +  [(1 +0xValueH*256) OR 0xValueL])*2)
-  tx.MSG[tx.SZE++] = 0x86;                          // Command to set clock divisor
-  tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor & 0xFF); // Set 0xValueL of clock divisor
-  tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor >> 8);   // Set 0xValueH of clock divisor
-  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);     // Send off the commands
-  tx.SZE = 0;                                       // Clear output buffer
-  Sleep(20);                                        // Delay for a while
-
-  // Turn off loop back in case
-  tx.MSG[tx.SZE++] = 0x85;                      // Command to turn off loop back of TDI/TDO connection
-  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
-  tx.SZE = 0;                                   // Clear output buffer
-  Sleep(30);                                    // Delay for a while
-  printf("SPI initial successful\n");
-  return true;
 }
 
 bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
@@ -139,6 +98,47 @@ bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
     retVal = false;
   }
   return retVal;
+}
+
+bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
+{
+  bool retVal = false;
+  FT_STATUS ftS;
+  PKT tx;
+  BYTE idx = 0;
+  DWORD dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
+                             // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
+  ////////////////////////////////////////////////////////////////////
+  // Configure the MPSSE for SPI communication with EEPROM
+  //////////////////////////////////////////////////////////////////
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = 0x8A;                      // Ensure disable clock divide by 5 for 60Mhz master clock
+  tx.MSG[tx.SZE++] = 0x97;                      // Ensure turn off adaptive clocking
+  tx.MSG[tx.SZE++] = 0x8D;                      // disable 3 phase data clock
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
+  tx.SZE = 0;                                   // Clear output buffer
+
+  tx.MSG[tx.SZE++] = 0x80; // Command to set directions of lower 8 pins and force value on bits set as output
+//  tx.MSG[tx.SZE++] = 0x00;  Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+//  tx.MSG[tx.SZE++] = 0x0b;  Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+  tx.MSG[tx.SZE++] = 0xCB; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+  tx.MSG[tx.SZE++] = 0xCB; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+  // The SK clock frequency can be worked out by below algorithm with divide by 5 set as off
+  // SK frequency  = 60MHz /((1 +  [(1 +0xValueH*256) OR 0xValueL])*2)
+  tx.MSG[tx.SZE++] = 0x86;                          // Command to set clock divisor
+  tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor & 0xFF); // Set 0xValueL of clock divisor
+  tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor >> 8);   // Set 0xValueH of clock divisor
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);     // Send off the commands
+  tx.SZE = 0;                                       // Clear output buffer
+  Sleep(20);                                        // Delay for a while
+
+  // Turn off loop back in case
+  tx.MSG[tx.SZE++] = 0x85;                      // Command to turn off loop back of TDI/TDO connection
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
+  tx.SZE = 0;                                   // Clear output buffer
+  Sleep(30);                                    // Delay for a while
+  printf("SPI initial successful\n");
+  return true;
 }
 
 bool configureMPSSE(FT_HANDLE ftH)
@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
   bool antennaConnected = false;
   bool noPause = false;
   bool configGPSCLK = false;
-  //bool configGPSCLK = true;
+  // bool configGPSCLK = true;
   DWORD numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
@@ -487,9 +487,9 @@ int main(int argc, char *argv[])
             // GPSConfig(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz */
       // Notice the trailing zero on the data... that's where the address goes
       fprintf(stderr, "Sending Clock Speed Change\n");
-      //sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+      // sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
       sendSPItoMAX(ftdiHandle, 0x9CC00080, 0x03); // 8 MHz
-      //sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
+      // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
       Sleep(20);
     }
   }
