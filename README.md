@@ -1,0 +1,2 @@
+# L1IFStat
+Application to set and check L1IF board's status information. This application may be used to check the GPIOs of the L1IF board, and/or set IDLE and SHDN. The application may also be used to program the MAX 2769 via SPI inerface from FTDI.
