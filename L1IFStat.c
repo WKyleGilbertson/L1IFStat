@@ -1,20 +1,20 @@
 #pragma comment(lib, "lib/FTD2XX.lib")
 #include "inc/FTD2XX.h"
-#include <windows.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #define MLEN 64
 
-const BYTE AA_ECHO_CMD_1 = 0xAA;
-const BYTE AB_ECHO_CMD_2 = 0xAB;
-const BYTE BAD_COMMAND_RESPONSE = 0xFA;
-const BYTE MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13; // AN 108 Section 3.3.4
+//const BYTE AA_ECHO_CMD_1 = 0xAA;
+//const BYTE AB_ECHO_CMD_2 = 0xAB;
+//const BYTE BAD_COMMAND_RESPONSE = 0xFA;
+const uint8_t MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13; // AN 108 Section 3.3.4
 
-WORD L1IFStat;
-const BYTE loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In
-const BYTE loGPIOdefaults = 0xCB;  // 11xx 1x11
+uint16_t L1IFStat;
+const uint8_t loGPIOdirection = 0xCB; // 1100 1011 : 1 = Out, 0 = In
+const uint8_t loGPIOdefaults = 0xCB;  // 11xx 1x11
 
 enum gpio
 {
@@ -30,14 +30,15 @@ enum maxreg
 
 typedef struct
 {
-  BYTE MSG[MLEN];
-  DWORD SZE;
-  DWORD CNT;
+  uint8_t MSG[MLEN];
+  uint32_t SZE;
+  uint32_t CNT;
 } PKT;
 
 void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
 {
-  for (int loop = 0; loop < 5; loop++)
+  uint8_t idx;
+  for (idx = 0; idx < 5; idx++)
   {
     pkt->MSG[pkt->SZE++] = 0x80; // GPIO command for ADBUS
     pkt->MSG[pkt->SZE++] = 0xC0; // Value -- Chip Select is Active Low
@@ -47,7 +48,8 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
 
 void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
-  for (int loop = 0; loop < 5; loop++) // One 0x80 command can keep 0.2 us
+  uint8_t idx;
+  for (idx = 0; idx < 5; idx++) // One 0x80 command can keep 0.2 us
   {                                    // Do 5 times to stay in for 1 us
     pkt->MSG[pkt->SZE++] = 0x80;       // AN 108 Section 3.6.1 Set Data bits LowByte
     pkt->MSG[pkt->SZE++] = 0xC8;       // Value -- Deselect Chip
@@ -55,7 +57,7 @@ void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
   }
 }
 
-bool sendSPItoMAX(FT_HANDLE ftH, UINT32 DATA, BYTE ADDR)
+bool sendSPItoMAX(FT_HANDLE ftH, uint32_t DATA, uint8_t ADDR)
 {
   FT_STATUS ftS;
   PKT tx;
@@ -97,8 +99,8 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   bool retVal = false;
   FT_STATUS ftS;
   PKT tx;
-  BYTE idx = 0;
-  DWORD dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
+  uint8_t idx = 0;
+  uint32_t dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
                              // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
   ////////////////////////////////////////////////////////////////////
   // Configure the MPSSE for SPI communication with EEPROM
@@ -163,7 +165,7 @@ bool configureMPSSE(FT_HANDLE ftH)
   return true;
 } /* End AN 135 Section 4.2 */
 
-bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
+bool testBadCommand(FT_HANDLE ftH, uint8_t cmd)
 { /* AN 135 Section 5.3 "Configure the FTDI MPSSE" */
   //////////////////////////////////////////////////////////////////
   // Synchronize the MPSSE interface by sending bad command ¡®0xAA¡¯
@@ -171,7 +173,7 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
   bool retVal = false;
   FT_STATUS ftS;
   PKT tx, rx;
-  BYTE idx = 0;
+  uint8_t idx = 0;
 
   // Enable internal loop-back AN 135 Section 5.3.1
   tx.SZE = 0;
@@ -243,13 +245,13 @@ bool testBadCommand(FT_HANDLE ftH, BYTE cmd)
   return retVal;
 } /* End AN 135 Section 5.3 "Configure the FTDI MPSSE" */
 
-BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
+uint8_t readGPIObyte(FT_HANDLE ftH, uint8_t lhB) // Low byte = 0, High byte = 1
 {                                          /* AN 135 Section 5.5 GPIO Read*/
-  BYTE retVal = 0x00;
+  uint8_t  retVal = 0x00;
   FT_STATUS ftS;
   PKT tx, rx;
-  BYTE idx = 0;
-  BYTE opCode = 0; // FTDI OPCODE AN 108 Section 3.6
+  uint8_t idx = 0;
+  uint8_t opCode = 0; // FTDI OPCODE AN 108 Section 3.6
   // Change scope trigger to channel 4 (TMS/CS) falling edge
   tx.SZE = 0;
   opCode = (lhB == 0) ? 0x81 : 0x83;
@@ -288,16 +290,16 @@ BYTE readGPIObyte(FT_HANDLE ftH, BYTE lhB) // Low byte = 0, High byte = 1
   }
 } /* End AN 135 Section 5.5 GPIO Read*/
 
-void toggleGPIO(FT_HANDLE ftH, BYTE bits)
+void toggleGPIO(FT_HANDLE ftH, uint8_t bits)
 {
   FT_STATUS ftS;
   PKT tx, rx;
-  BYTE idx = 0;
-  BYTE opCode = 0x80; // FTDI OPCODE 0x80 = WRite Lower Byte
-  BYTE Value = (BYTE)(L1IFStat & 0x00FF);
-  BYTE direction = loGPIOdirection;
-  //  BYTE loGPIOdirection = 0xCB; // 1100 1011
-  //  BYTE loGPIOdefaults  = 0xCB; // 11xx 1x11
+  uint8_t idx = 0;
+  uint8_t opCode = 0x80; // FTDI OPCODE 0x80 = WRite Lower Byte
+  uint8_t Value = (uint8_t)(L1IFStat & 0x00FF);
+  uint8_t direction = loGPIOdirection;
+  //  uint8_t loGPIOdirection = 0xCB; // 1100 1011
+  //  uint8_t loGPIOdefaults  = 0xCB; // 11xx 1x11
 
   switch (bits)
   {
@@ -344,13 +346,13 @@ void toggleGPIO(FT_HANDLE ftH, BYTE bits)
   else
   {
     fprintf(stderr, "GPIO low-byte:0x%.2X\n", rx.MSG[0]);
-    L1IFStat = (WORD)rx.MSG[0] & 0x00FF;
+    L1IFStat = (uint16_t)rx.MSG[0] & 0x00FF;
   }
 }
 
-void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, DWORD numD)
+void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, uint32_t numD)
 {
-  WORD i;
+  uint16_t i;
   for (i = 0; i < numD; i++)
   {
     printf("Dev %d:\n", i);
@@ -360,11 +362,11 @@ void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, DWORD numD)
     printf("  LocId=0x%x\n", dInfo[i].LocId);
     printf("  SerialNumber=%s\n", dInfo[i].SerialNumber);
     printf("  Description=%s\n", dInfo[i].Description);
-    printf("  ftHandle=0x%x\n", (DWORD)dInfo[i].ftHandle);
+    printf("  ftHandle=0x%x\n", (uint32_t)dInfo[i].ftHandle);
   }
 }
 
-void displayL1IFStatus(WORD boardStatus)
+void displayL1IFStatus(uint16_t boardStatus)
 {
   fprintf(stderr, "Bit 0 BDBUS0 (SPI CLK)->: %s\n",
           ((boardStatus & 0x0001) == 1) ? "HI" : "LO");
@@ -389,15 +391,13 @@ int main(int argc, char *argv[])
 {
   FT_STATUS ftStatus;
   FT_HANDLE ftdiHandle;
-  BYTE GPIOdata = 0;
-  BYTE ch = ' ';
+  uint8_t GPIOdata = 0;
+  uint8_t ch = ' ';
   bool devMPSSEConfig = false;
   bool devSPIConfig = false;
   bool antennaConnected = false;
   bool noPause = false;
-//  bool configMAXCLK = false;
-// bool configMAXCLK = true;
-  DWORD numDevs;
+  uint32_t numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
 
   if ((argc == 2) && (argv[1][0] == '~'))
