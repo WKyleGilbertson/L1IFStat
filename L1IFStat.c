@@ -290,6 +290,69 @@ uint8_t readGPIObyte(FT_HANDLE ftH, uint8_t lhB) // Low byte = 0, High byte = 1
   }
 } /* End AN 135 Section 5.5 GPIO Read*/
 
+void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
+{
+  FT_STATUS ftS;
+  PKT tx, rx;
+  uint8_t idx = 0;
+  uint8_t opCode = 0x82; // FTDI OPCODE 0x82 = Write High Byte
+  //uint8_t Value = (uint8_t)(L1IFStat & 0x00FF);
+  uint8_t Value = (bits);
+ // uint8_t direction = loGPIOdirection;
+  uint8_t direction = 0xFF;
+  //  uint8_t loGPIOdirection = 0xCB; // 1100 1011
+  //  uint8_t loGPIOdefaults  = 0xCB; // 11xx 1x11
+
+  /*
+  switch (bits)
+  {
+  case 0x40:
+    Value ^= IDLE;
+    break;
+  case 0x80:
+    Value ^= SHDN;
+    break;
+  default:
+    fprintf(stderr, "Idle or shutdown only\n");
+    break;
+  } */
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = opCode;
+  tx.MSG[tx.SZE++] = Value;
+  tx.MSG[tx.SZE++] = direction;
+
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  if ((ftS != FT_OK) && (tx.CNT != 3))
+  {
+    fprintf(stderr, "Error - GPIO not written\n");
+    FT_SetBitMode(ftH, 0x0, 0x00); // Reset the port to disable MPSSE
+    FT_Close(ftH);                 // Close the USB port
+    exit(1);                       // Exit with error
+  }
+  Sleep(2);      // Wait for data to be transmitted and status to be returned
+  opCode = 0x83; // FTDI OPCODE 0x81 = Read Lower Byte
+  tx.SZE = 0;
+  tx.MSG[tx.SZE++] = opCode;
+  ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
+  tx.SZE = 0;
+  Sleep(2);
+  ftS = FT_GetQueueStatus(ftH, &rx.SZE);
+  ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
+  if ((ftS != FT_OK) && (rx.SZE != 1))
+  //  if ((ftS != FT_OK) && (rx.CNT != 1)) // I think this should be NBR
+  {
+    fprintf(stderr, "Error - GPIO cannot be read\n");
+    FT_SetBitMode(ftH, 0x00, 0x00);
+    FT_Close(ftH);
+    exit(1);
+  }
+  else
+  {
+    fprintf(stderr, "GPIO low-byte:0x%.2X\n", rx.MSG[0]);
+    L1IFStat = (uint16_t)rx.MSG[0] & 0x00FF;
+  }
+}
+
 void toggleGPIO(FT_HANDLE ftH, uint8_t bits)
 {
   FT_STATUS ftS;
@@ -489,6 +552,7 @@ int main(int argc, char *argv[])
   antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
   printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 
+  toggleGPIOHighByte(ftdiHandle, 0x00); // LED Active Low
   // GPIO retains its setting until MPSSE reset
   if (noPause == false)
   {

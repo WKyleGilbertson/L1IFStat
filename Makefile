@@ -1,4 +1,4 @@
-IDIR = /git/GPS/L1IFStream/Code/inc
+IDIR = ./inc
 CC = CL
 #CFLAGS = -I
 
