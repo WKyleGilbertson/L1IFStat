@@ -4,12 +4,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include "version.h"
 
 #define MLEN 64
 
-//const BYTE AA_ECHO_CMD_1 = 0xAA;
-//const BYTE AB_ECHO_CMD_2 = 0xAB;
-//const BYTE BAD_COMMAND_RESPONSE = 0xFA;
+// const BYTE AA_ECHO_CMD_1 = 0xAA;
+// const BYTE AB_ECHO_CMD_2 = 0xAB;
+// const BYTE BAD_COMMAND_RESPONSE = 0xFA;
 const uint8_t MSB_FALLING_EDGE_CLOCK_BIT_OUT = 0x13; // AN 108 Section 3.3.4
 
 uint16_t L1IFStat;
@@ -24,8 +26,16 @@ enum gpio
 
 enum maxreg
 {
-  CONF1 = 0x00, CONF2 = 0x01, CONF3 = 0x02, PLLCONF = 0x03,
-  DIV = 0x04, FDIV = 0x05, STRM = 0x06, CLK = 0x07, TEST1 = 0x08, TEST2 = 0x09
+  CONF1 = 0x00,
+  CONF2 = 0x01,
+  CONF3 = 0x02,
+  PLLCONF = 0x03,
+  DIV = 0x04,
+  FDIV = 0x05,
+  STRM = 0x06,
+  CLK = 0x07,
+  TEST1 = 0x08,
+  TEST2 = 0x09
 };
 
 typedef struct
@@ -49,11 +59,11 @@ void SPI_CSEnable(PKT *pkt) // Not sure these are correct for L1IF
 void SPI_CSDisable(PKT *pkt) // Not sure these are correct for L1IF
 {
   uint8_t idx;
-  for (idx = 0; idx < 5; idx++) // One 0x80 command can keep 0.2 us
-  {                                    // Do 5 times to stay in for 1 us
-    pkt->MSG[pkt->SZE++] = 0x80;       // AN 108 Section 3.6.1 Set Data bits LowByte
-    pkt->MSG[pkt->SZE++] = 0xC8;       // Value -- Deselect Chip
-    pkt->MSG[pkt->SZE++] = 0xCB;       // Direction
+  for (idx = 0; idx < 5; idx++)  // One 0x80 command can keep 0.2 us
+  {                              // Do 5 times to stay in for 1 us
+    pkt->MSG[pkt->SZE++] = 0x80; // AN 108 Section 3.6.1 Set Data bits LowByte
+    pkt->MSG[pkt->SZE++] = 0xC8; // Value -- Deselect Chip
+    pkt->MSG[pkt->SZE++] = 0xCB; // Direction
   }
 }
 
@@ -101,7 +111,7 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   PKT tx;
   uint8_t idx = 0;
   uint32_t dwClockDivisor = 29; // Value of clock divisor, SCL frequency...
-                             // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
+                                // SCL frequency = 60/((1+29)*2) (MHz) = 1 MHz
   ////////////////////////////////////////////////////////////////////
   // Configure the MPSSE for SPI communication with EEPROM
   //////////////////////////////////////////////////////////////////
@@ -113,8 +123,8 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   tx.SZE = 0;                                   // Clear output buffer
 
   tx.MSG[tx.SZE++] = 0x80; // Command to set directions of lower 8 pins and force value on bits set as output
-//  tx.MSG[tx.SZE++] = 0x00;  Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
-//  tx.MSG[tx.SZE++] = 0x0b;  Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
+                           //  tx.MSG[tx.SZE++] = 0x00;  Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
+                           //  tx.MSG[tx.SZE++] = 0x0b;  Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
   tx.MSG[tx.SZE++] = 0xCB; // Set SDA, SCL high, WP disabled by SK, DO at bit ��1��, GPIOL0 at bit ��0��
   tx.MSG[tx.SZE++] = 0xCB; // Set SK,DO,GPIOL0 pins as output with bit ��1��, other pins as input with bit ��0��
   // The SK clock frequency can be worked out by below algorithm with divide by 5 set as off
@@ -131,7 +141,7 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
   tx.SZE = 0;                                   // Clear output buffer
   Sleep(30);                                    // Delay for a while
-//  fprintf(stderr, "SPI initial successful\n");
+                                                //  fprintf(stderr, "SPI initial successful\n");
   return true;
 }
 
@@ -144,7 +154,7 @@ bool configureMPSSE(FT_HANDLE ftH)
   ftS = FT_ResetDevice(ftH); // Reset peripheral side of FTDI port
   ftS |= FT_GetQueueStatus(ftH, &rx.SZE);
   if ((ftS == FT_OK) && (rx.CNT > 0))
-    ftS |= FT_Read(ftH, rx.MSG, rx.SZE, &rx.CNT);// Read it to throw it away
+    ftS |= FT_Read(ftH, rx.MSG, rx.SZE, &rx.CNT); // Read it to throw it away
   // ftStatus |= FT_SetUSBParameters(ftHandle, 65535, 65535);	//Set USB request transfer size
   ftS |= FT_SetUSBParameters(ftH, 64, 64);     // Set USB request transfer size
   ftS |= FT_SetChars(ftH, FALSE, 0, FALSE, 0); // Disable event and error characters
@@ -186,7 +196,7 @@ bool testBadCommand(FT_HANDLE ftH, uint8_t cmd)
     fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
     FT_SetBitMode(ftH, 0x00, 0x00);
     FT_Close(ftH);
-    //retVal = false;
+    // retVal = false;
     return retVal;
   }
   else
@@ -246,8 +256,8 @@ bool testBadCommand(FT_HANDLE ftH, uint8_t cmd)
 } /* End AN 135 Section 5.3 "Configure the FTDI MPSSE" */
 
 uint8_t readGPIObyte(FT_HANDLE ftH, uint8_t lhB) // Low byte = 0, High byte = 1
-{                                          /* AN 135 Section 5.5 GPIO Read*/
-  uint8_t  retVal = 0x00;
+{                                                /* AN 135 Section 5.5 GPIO Read*/
+  uint8_t retVal = 0x00;
   FT_STATUS ftS;
   PKT tx, rx;
   uint8_t idx = 0;
@@ -296,9 +306,9 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
   PKT tx, rx;
   uint8_t idx = 0;
   uint8_t opCode = 0x82; // FTDI OPCODE 0x82 = Write High Byte
-  //uint8_t Value = (uint8_t)(L1IFStat & 0x00FF);
+  // uint8_t Value = (uint8_t)(L1IFStat & 0x00FF);
   uint8_t Value = (bits);
- // uint8_t direction = loGPIOdirection;
+  // uint8_t direction = loGPIOdirection;
   uint8_t direction = 0xFF;
   //  uint8_t loGPIOdirection = 0xCB; // 1100 1011
   //  uint8_t loGPIOdefaults  = 0xCB; // 11xx 1x11
@@ -462,6 +472,26 @@ int main(int argc, char *argv[])
   bool noPause = false;
   uint32_t numDevs;
   FT_DEVICE_LIST_INFO_NODE *devInfo;
+  SWV V;
+
+  V.Major = MAJOR_VERSION;
+  V.Minor = MINOR_VERSION;
+  V.Patch = PATCH_VERSION;
+#ifdef CURRENT_HASH
+  strncpy(V.GitCI, CURRENT_HASH, 40);
+  V.GitCI[40] = '\0';
+#endif
+#ifdef CURRENT_DATE
+  strncpy(V.BuildDate, CURRENT_DATE, 10);
+  V.BuildDate[10] = '\0';
+#endif
+#ifdef CURRENT_NAME
+  strncpy(V.Name, CURRENT_NAME, 10);
+#endif
+
+  fprintf(stdout, "%s: GitCI:%s %s v%.1d.%.1d.%.1d\n",
+          V.Name, V.GitCI, V.BuildDate,
+          V.Major, V.Minor, V.Patch);
 
   if ((argc == 2) && (argv[1][0] == '~'))
   {
@@ -535,15 +565,16 @@ int main(int argc, char *argv[])
   /* Configure SPI here. Do I need to? */
   devSPIConfig = configureSPI(ftdiHandle);
   if (devSPIConfig != true)
-    {
-      fprintf(stderr, "Error - SPI not configured\n");
-      FT_SetBitMode(ftdiHandle, 0x00, 0x00);
-      FT_Close(ftdiHandle);
-      exit(1);
-    }
-    else {
+  {
+    fprintf(stderr, "Error - SPI not configured\n");
+    FT_SetBitMode(ftdiHandle, 0x00, 0x00);
+    FT_Close(ftdiHandle);
+    exit(1);
+  }
+  else
+  {
     fprintf(stderr, "SPI Initialized succesfully!\n");
-    }
+  }
 
   /* Now READ the GPIO to See if Antenna is attached*/
   GPIOdata = readGPIObyte(ftdiHandle, 0);
@@ -572,13 +603,13 @@ int main(int argc, char *argv[])
         GPIOdata = readGPIObyte(ftdiHandle, 0);
         displayL1IFStatus(L1IFStat);
         break;
-      case 'p' :
-      // sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
+      case 'p':
+        // sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
         sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
-      // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
-      // Notice the trailing zero on the data... that's where the address goes
+                                                       // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
+                                                       // Notice the trailing zero on the data... that's where the address goes
         Sleep(20);
-       break;
+        break;
       default:
         break;
       }
