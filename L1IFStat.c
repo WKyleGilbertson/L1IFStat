@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "version.h"
+#include "inc/version.h"
 
 #define MLEN 64
 
