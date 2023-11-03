@@ -21,7 +21,8 @@ const uint8_t loGPIOdefaults = 0xCB;  // 11xx 1x11
 enum gpio
 {
   IDLE = 0x40,
-  SHDN = 0x80
+  SHDN = 0x80,
+  LED = 0x80
 };
 
 enum maxreg
@@ -306,26 +307,22 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
   PKT tx, rx;
   uint8_t idx = 0;
   uint8_t opCode = 0x82; // FTDI OPCODE 0x82 = Write High Byte
-  // uint8_t Value = (uint8_t)(L1IFStat & 0x00FF);
-  uint8_t Value = (bits);
+  uint8_t Value = (uint8_t)((L1IFStat & 0xFF00) >> 8);
+//  uint8_t Value = (bits);
   // uint8_t direction = loGPIOdirection;
   uint8_t direction = 0xFF;
   //  uint8_t loGPIOdirection = 0xCB; // 1100 1011
   //  uint8_t loGPIOdefaults  = 0xCB; // 11xx 1x11
 
-  /*
   switch (bits)
   {
-  case 0x40:
-    Value ^= IDLE;
-    break;
   case 0x80:
-    Value ^= SHDN;
+    Value ^= LED;
     break;
   default:
-    fprintf(stderr, "Idle or shutdown only\n");
+    fprintf(stderr, "LED only\n");
     break;
-  } */
+  }
   tx.SZE = 0;
   tx.MSG[tx.SZE++] = opCode;
   tx.MSG[tx.SZE++] = Value;
@@ -358,8 +355,8 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
   }
   else
   {
-    fprintf(stderr, "GPIO low-byte:0x%.2X\n", rx.MSG[0]);
-    L1IFStat = (uint16_t)rx.MSG[0] & 0x00FF;
+    fprintf(stderr, "GPIO high-byte:0x%.2X\n", rx.MSG[0]);
+    L1IFStat = (uint16_t)rx.MSG[0] | 0xFF00;
   }
 }
 
@@ -419,7 +416,7 @@ void toggleGPIO(FT_HANDLE ftH, uint8_t bits)
   else
   {
     fprintf(stderr, "GPIO low-byte:0x%.2X\n", rx.MSG[0]);
-    L1IFStat = (uint16_t)rx.MSG[0] & 0x00FF;
+    L1IFStat = (uint16_t)rx.MSG[0] | 0x00FF;
   }
 }
 
@@ -465,6 +462,7 @@ int main(int argc, char *argv[])
   FT_STATUS ftStatus;
   FT_HANDLE ftdiHandle;
   uint8_t GPIOdata = 0;
+  uint8_t LEDState = 0;
   uint8_t ch = ' ';
   bool devMPSSEConfig = false;
   bool devSPIConfig = false;
@@ -583,13 +581,13 @@ int main(int argc, char *argv[])
   antennaConnected = ((GPIOdata & 0x20) >> 5) == 1 ? true : false;
   printf("Antenna connected? %s\n", (antennaConnected) == true ? "yes" : "no");
 
-  toggleGPIOHighByte(ftdiHandle, 0x00); // LED Active Low
   // GPIO retains its setting until MPSSE reset
   if (noPause == false)
   {
     while (ch != 0x0D)
     {
-      printf("Press <Enter> to continue, 's' for shutdown, or 'i' for idle\n");
+      printf("Press <Enter> to continue, 's' for shutdown, 'i' for idle,"
+             " or 'l' for LED\n");
       ch = getch(); // wait for a carriage return, or don't
       switch (ch)
       {
@@ -609,6 +607,11 @@ int main(int argc, char *argv[])
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
         Sleep(20);
+        break;
+      case 'l':
+        LEDState = readGPIObyte(ftdiHandle, 1);
+        toggleGPIOHighByte(ftdiHandle, LED); // LED Active Low
+        LEDState = readGPIObyte(ftdiHandle, 1);
         break;
       default:
         break;
