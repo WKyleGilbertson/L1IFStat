@@ -1,11 +1,11 @@
 #pragma comment(lib, "lib/FTD2XX.lib")
 #include "inc/FTD2XX.h"
+#include "inc/version.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "inc/version.h"
 
 #define MLEN 64
 
