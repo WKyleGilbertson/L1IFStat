@@ -492,8 +492,8 @@ int main(int argc, char *argv[])
   V.GitCI[40] = '\0';
 #endif
 #ifdef CURRENT_DATE
-  strncpy(V.BuildDate, CURRENT_DATE, 10);
-  V.BuildDate[10] = '\0';
+  strncpy(V.BuildDate, CURRENT_DATE, 16);
+  V.BuildDate[16] = '\0';
 #endif
 #ifdef CURRENT_NAME
   strncpy(V.Name, CURRENT_NAME, 10);
@@ -533,8 +533,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-   ftStatus = FT_Open(1, &ftdiHandle);
-   //ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
+//   ftStatus = FT_Open(1, &ftdiHandle);
+   ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
   //ftStatus = FT_OpenEx(devInfo[1].Description, FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
   if (ftStatus != FT_OK) // AN_135 4.1 Step 3
   {
@@ -630,6 +630,7 @@ int main(int argc, char *argv[])
         LEDState = readGPIObyte(ftdiHandle, 1);
         break;
       default:
+        if (ch == 'x') ch = 0x0D;
         break;
       }
       // printf("Got it? 0x%.2X ", ch);
