@@ -248,7 +248,7 @@ bool testBadCommand(FT_HANDLE ftH, uint8_t cmd)
   ftS = FT_GetQueueStatus(ftH, &rx.CNT);
   if (rx.CNT != 0)
   {
-    fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
+    fprintf(stderr, "Error - MPSSE receive buffer should be empty %d\n", ftS);
     FT_SetBitMode(ftH, 0x00, 0x00);
     FT_Close(ftH);
     retVal = false;
