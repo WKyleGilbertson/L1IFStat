@@ -1,11 +1,13 @@
 #pragma comment(lib, "lib/FTD2XX.lib")
-#include "inc/FTD2XX.h"
+#include "inc/ftd2xx.h"
+#include "inc/WinTypes.h"
 #include "inc/version.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #define MLEN 64
 
@@ -135,13 +137,15 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor >> 8);   // Set 0xValueH of clock divisor
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);     // Send off the commands
   tx.SZE = 0;                                       // Clear output buffer
-  Sleep(20);                                        // Delay for a while
+//  Sleep(20);                                        // Delay for a while
+  usleep(20000);                                        // Delay for a while
 
   // Turn off loop back in case
   tx.MSG[tx.SZE++] = 0x85;                      // Command to turn off loop back of TDI/TDO connection
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
   tx.SZE = 0;                                   // Clear output buffer
-  Sleep(30);                                    // Delay for a while
+  //Sleep(30);                                    // Delay for a while
+  usleep(30000);                                    // Delay for a while
                                                 //  fprintf(stderr, "SPI initial successful\n");
   return true;
 }
@@ -171,7 +175,8 @@ bool configureMPSSE(FT_HANDLE ftH)
   }
   else
   {
-    Sleep(50); // Wait for all the USB stuff to complete and work
+    //Sleep(50); // Wait for all the USB stuff to complete and work
+    usleep(50000); // Wait for all the USB stuff to complete and work
   }
   return true;
 } /* End AN 135 Section 4.2 */
@@ -194,7 +199,8 @@ bool testBadCommand(FT_HANDLE ftH, uint8_t cmd)
   ftS = FT_GetQueueStatus(ftH, &rx.CNT);
   if (rx.CNT != 0)
   {
-    fprintf(stderr, "Error - MPSSE receive buffer should be empty\n", ftS);
+    fprintf(stderr, "Error - MPSSE receive buffer should be empty %d\n", ftS);
+    printf("rx.CNT = %d\n", rx.CNT);
     FT_SetBitMode(ftH, 0x00, 0x00);
     FT_Close(ftH);
     // retVal = false;
@@ -271,7 +277,8 @@ uint8_t readGPIObyte(FT_HANDLE ftH, uint8_t lhB) // Low byte = 0, High byte = 1
   // on low byte of MPSSE
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Read the low GPIO byte
   tx.SZE = 0;                                   // Reset output buffer pointer
-  Sleep(2);                                     // Wait for data to be transmitted and status to be returned
+  //Sleep(2);                                     // Wait for data to be transmitted and status to be returned
+  usleep(2000);                                     // Wait for data to be transmitted and status to be returned
   // by the device driver - see latency timer above
   // Check the receive buffer - there should be one byte
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
@@ -336,13 +343,15 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
     FT_Close(ftH);                 // Close the USB port
     exit(1);                       // Exit with error
   }
-  Sleep(2);      // Wait for data to be transmitted and status to be returned
+  //Sleep(2);      // Wait for data to be transmitted and status to be returned
+  usleep(2000);      // Wait for data to be transmitted and status to be returned
   opCode = 0x83; // FTDI OPCODE 0x81 = Read Lower Byte
   tx.SZE = 0;
   tx.MSG[tx.SZE++] = opCode;
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
   tx.SZE = 0;
-  Sleep(2);
+  //Sleep(2);
+  usleep(2000);
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
   ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
   if ((ftS != FT_OK) && (rx.SZE != 1))
@@ -396,13 +405,15 @@ void toggleGPIO(FT_HANDLE ftH, uint8_t bits)
     FT_Close(ftH);                 // Close the USB port
     exit(1);                       // Exit with error
   }
-  Sleep(2);      // Wait for data to be transmitted and status to be returned
+  //Sleep(2);      // Wait for data to be transmitted and status to be returned
+  usleep(2000);      // Wait for data to be transmitted and status to be returned
   opCode = 0x81; // FTDI OPCODE 0x81 = Read Lower Byte
   tx.SZE = 0;
   tx.MSG[tx.SZE++] = opCode;
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
   tx.SZE = 0;
-  Sleep(2);
+  //Sleep(2);
+  usleep(2000);
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
   ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
   if ((ftS != FT_OK) && (rx.SZE != 1))
@@ -461,6 +472,7 @@ int main(int argc, char *argv[])
 {
   FT_STATUS ftStatus;
   FT_HANDLE ftdiHandle;
+  FT_PROGRAM_DATA ftData;
   uint8_t GPIOdata = 0;
   uint8_t LEDState = 0;
   uint8_t ch = ' ';
@@ -521,8 +533,9 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
-  ftStatus = FT_OpenEx(devInfo[1].Description, FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
+   ftStatus = FT_Open(1, &ftdiHandle);
+   //ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
+  //ftStatus = FT_OpenEx(devInfo[1].Description, FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
   if (ftStatus != FT_OK) // AN_135 4.1 Step 3
   {
     fprintf(stderr, "Can't open FT2232H device! \n");
@@ -533,6 +546,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Successfully opened FT2232H device \"%s\" for MPSSE! \n",
             devInfo[1].Description);
   }
+
   /* AN 135 Section 4.2*/
   devMPSSEConfig = configureMPSSE(ftdiHandle);
   if (devMPSSEConfig == false)
@@ -588,7 +602,8 @@ int main(int argc, char *argv[])
     {
       printf("Press <Enter> to continue, 's' for shutdown, 'i' for idle,"
              " or 'l' for LED\n");
-      ch = getch(); // wait for a carriage return, or don't
+      //ch = getch(); // wait for a carriage return, or don't
+      ch = getchar(); // wait for a carriage return, or don't
       switch (ch)
       {
       case 's':
@@ -606,7 +621,8 @@ int main(int argc, char *argv[])
         sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
-        Sleep(20);
+        //Sleep(20);
+        usleep(20000);
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
