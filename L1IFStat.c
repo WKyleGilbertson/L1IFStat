@@ -56,7 +56,7 @@ int8_t msPause(uint32_t ms)
   int8_t retVal = 0;
 #if defined(_WIN32)
   Sleep(ms);
-#elif !define(_WIN32)
+#elif !defined(_WIN32)
   struct timespec remaining, request;
   request.tv_sec = 0;
   request.tv_nsec = ms * 1000000;
