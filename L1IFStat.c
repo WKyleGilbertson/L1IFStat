@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
           V.Name, V.GitCI, V.BuildDate,
           V.Major, V.Minor, V.Patch);
 
-  if ((argc == 2) && (argv[1][0] == '~'))
+  if ((argc == 2) && (argv[1][0] == '!'))
   {
     noPause = true;
   }
@@ -680,11 +680,6 @@ int main(int argc, char *argv[])
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
         msPause(20);
-        /*#if defined(_WIN32)
-                Sleep(20);
-        #elif !defined(_WIN32)
-                usleep(20000);
-        #endif*/
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
