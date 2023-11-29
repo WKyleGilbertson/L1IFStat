@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #if !defined(_WIN32) && (defined(__UNIX__) || (defined(__APPLE)))
 #include <time.h>
 #include <unistd.h>
