@@ -445,13 +445,13 @@ void displayDevInfo(FT_DEVICE_LIST_INFO_NODE *dInfo, uint32_t numD)
   uint16_t i;
   for (i = 0; i < numD; i++)
   {
-    printf("Dev %d:\n", i);
-    printf("  Flags=0x%x\n", dInfo[i].Flags);
-    printf("  Type=0x%x\n", dInfo[i].Type);
+    printf("Dev %d: ", i);
+    printf("  Flags=0x%x ", dInfo[i].Flags);
+    printf("  Type=0x%x ", dInfo[i].Type);
     printf("  ID=0x%x\n", dInfo[i].ID);
-    printf("  LocId=0x%x\n", dInfo[i].LocId);
-    printf("  SerialNumber=%s\n", dInfo[i].SerialNumber);
-    printf("  Description=%s\n", dInfo[i].Description);
+    printf("  LocId=0x%x", dInfo[i].LocId);
+    printf("  SerialNumber=%s ", dInfo[i].SerialNumber);
+    printf("  Description=%s ", dInfo[i].Description);
     printf("  ftHandle=0x%x\n", (uint32_t)dInfo[i].ftHandle);
   }
 }
@@ -515,6 +515,13 @@ int main(int argc, char *argv[])
   if ((argc == 2) && (argv[1][0] == '!'))
   {
     noPause = true;
+  }
+  else if ((argc != 1) && (argv[1][0] != '!'))
+  {
+    fprintf(stdout, "usage: L1IFStat [!]\n");
+    fprintf(stdout, "       ! option skips interactive mode.\n");
+    fprintf(stdout, "  default: Interactive mode for device query.\n");
+    exit(0);
   }
 
   ftStatus = FT_CreateDeviceInfoList(&numDevs); // AN_135 4.1 Step 1
