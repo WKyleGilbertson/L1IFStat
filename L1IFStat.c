@@ -1,13 +1,16 @@
 #pragma comment(lib, "lib/FTD2XX.lib")
 #include "inc/ftd2xx.h"
-#include "inc/WinTypes.h"
 #include "inc/version.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#if !defined(_WIN32) && (defined(__UNIX__) || (defined(__APPLE)))
+#include <time.h>
 #include <unistd.h>
+#include "inc/WinTypes.h"
+#endif
 
 #define MLEN 64
 
@@ -137,16 +140,22 @@ bool configureSPI(FT_HANDLE ftH) /* AN 114 Section 3.1 */
   tx.MSG[tx.SZE++] = (BYTE)(dwClockDivisor >> 8);   // Set 0xValueH of clock divisor
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);     // Send off the commands
   tx.SZE = 0;                                       // Clear output buffer
-//  Sleep(20);                                        // Delay for a while
-  usleep(20000);                                        // Delay for a while
+#if defined(_WIN32)
+  Sleep(20); // Delay for a while
+#elif defined((__UNIX__) || (__Apple) || (__linux__))
+  usleep(20000); // Delay for a while
+#endif
 
   // Turn off loop back in case
   tx.MSG[tx.SZE++] = 0x85;                      // Command to turn off loop back of TDI/TDO connection
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Send off the commands
   tx.SZE = 0;                                   // Clear output buffer
-  //Sleep(30);                                    // Delay for a while
-  usleep(30000);                                    // Delay for a while
-                                                //  fprintf(stderr, "SPI initial successful\n");
+#if defined(_WIN32)
+  Sleep(30); // Delay for a while
+#elif defined((__UNIX__) || (__Apple) || (__linux__))
+  usleep(30000); // Delay for a while
+#endif
+             //  fprintf(stderr, "SPI initial successful\n");
   return true;
 }
 
@@ -175,8 +184,11 @@ bool configureMPSSE(FT_HANDLE ftH)
   }
   else
   {
-    //Sleep(50); // Wait for all the USB stuff to complete and work
+#if defined(_WIN32)
+    Sleep(50); // Wait for all the USB stuff to complete and work
+#elif defined((_UNIX__) || (__Apple) || (__linux__))
     usleep(50000); // Wait for all the USB stuff to complete and work
+#endif
   }
   return true;
 } /* End AN 135 Section 4.2 */
@@ -277,8 +289,11 @@ uint8_t readGPIObyte(FT_HANDLE ftH, uint8_t lhB) // Low byte = 0, High byte = 1
   // on low byte of MPSSE
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT); // Read the low GPIO byte
   tx.SZE = 0;                                   // Reset output buffer pointer
-  //Sleep(2);                                     // Wait for data to be transmitted and status to be returned
-  usleep(2000);                                     // Wait for data to be transmitted and status to be returned
+#if defined(_WIN32)
+  Sleep(2); // Wait for data to be transmitted and status to be returned
+#elif defined((__UNIX__) || (__Apple) || (__linux__))
+  usleep(2000); // Wait for data to be transmitted and status to be returned
+#endif
   // by the device driver - see latency timer above
   // Check the receive buffer - there should be one byte
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
@@ -315,7 +330,7 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
   uint8_t idx = 0;
   uint8_t opCode = 0x82; // FTDI OPCODE 0x82 = Write High Byte
   uint8_t Value = (uint8_t)((L1IFStat & 0xFF00) >> 8);
-//  uint8_t Value = (bits);
+  //  uint8_t Value = (bits);
   // uint8_t direction = loGPIOdirection;
   uint8_t direction = 0xFF;
   //  uint8_t loGPIOdirection = 0xCB; // 1100 1011
@@ -343,15 +358,21 @@ void toggleGPIOHighByte(FT_HANDLE ftH, uint8_t bits)
     FT_Close(ftH);                 // Close the USB port
     exit(1);                       // Exit with error
   }
-  //Sleep(2);      // Wait for data to be transmitted and status to be returned
-  usleep(2000);      // Wait for data to be transmitted and status to be returned
+#if defined(_WIN32)
+  Sleep(2); // Wait for data to be transmitted and status to be returned
+#elif defined((__UNIX__) || (__Apple) || (__linux__))
+  usleep(2000); // Wait for data to be transmitted and status to be returned
+#endif
   opCode = 0x83; // FTDI OPCODE 0x81 = Read Lower Byte
   tx.SZE = 0;
   tx.MSG[tx.SZE++] = opCode;
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
   tx.SZE = 0;
-  //Sleep(2);
+#if defined(_WIN32)
+  Sleep(2);
+#elif defined((__UNIX__) || (__Apple) || (__linux__))
   usleep(2000);
+#endif
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
   ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
   if ((ftS != FT_OK) && (rx.SZE != 1))
@@ -405,15 +426,22 @@ void toggleGPIO(FT_HANDLE ftH, uint8_t bits)
     FT_Close(ftH);                 // Close the USB port
     exit(1);                       // Exit with error
   }
-  //Sleep(2);      // Wait for data to be transmitted and status to be returned
-  usleep(2000);      // Wait for data to be transmitted and status to be returned
+#if defined(_WIN32)
+  Sleep(2); // Wait for data to be transmitted and status to be returned
+            //  #elif defined((__UNIX__) || (__Apple) || (__linux__))
+#elif !defined(_WIN32)
+  usleep(2000); // Wait for data to be transmitted and status to be returned
+#endif
   opCode = 0x81; // FTDI OPCODE 0x81 = Read Lower Byte
   tx.SZE = 0;
   tx.MSG[tx.SZE++] = opCode;
   ftS = FT_Write(ftH, tx.MSG, tx.SZE, &tx.CNT);
   tx.SZE = 0;
-  //Sleep(2);
+#if defined(_WIN32)
+  Sleep(2);
+#elif !defined(_WIN32)
   usleep(2000);
+#endif
   ftS = FT_GetQueueStatus(ftH, &rx.SZE);
   ftS |= FT_Read(ftH, &rx.MSG, rx.SZE, &rx.CNT);
   if ((ftS != FT_OK) && (rx.SZE != 1))
@@ -475,7 +503,7 @@ int main(int argc, char *argv[])
   FT_PROGRAM_DATA ftData;
   uint8_t GPIOdata = 0;
   uint8_t LEDState = 0;
-  uint8_t ch = ' ';
+  int8_t ch = ' ', trash = ' ';
   bool devMPSSEConfig = false;
   bool devSPIConfig = false;
   bool antennaConnected = false;
@@ -533,9 +561,9 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-//   ftStatus = FT_Open(1, &ftdiHandle);
-   ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
-  //ftStatus = FT_OpenEx(devInfo[1].Description, FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
+  //   ftStatus = FT_Open(1, &ftdiHandle);
+  ftStatus = FT_OpenEx("USB<->GPS B", FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
+  // ftStatus = FT_OpenEx(devInfo[1].Description, FT_OPEN_BY_DESCRIPTION, &ftdiHandle);
   if (ftStatus != FT_OK) // AN_135 4.1 Step 3
   {
     fprintf(stderr, "Can't open FT2232H device! \n");
@@ -598,12 +626,18 @@ int main(int argc, char *argv[])
   // GPIO retains its setting until MPSSE reset
   if (noPause == false)
   {
-    while (ch != 0x0D)
+    while (ch != 0x0A)  // 0x0A = Line Feed (LF)
+    //while (ch != 0x0D) // 0x0D = Carriage Feed (CR)
     {
-      printf("Press <Enter> to continue, 's' for shutdown, 'i' for idle,"
-             " or 'l' for LED\n");
-      //ch = getch(); // wait for a carriage return, or don't
+      printf("Press <Enter> alone or 'x' to exit, or 's'for shutdown,");
+      printf(" 'i'dle, 'l'ED, or 'p'rogram.\n");
+      printf("Press <Enter> after selection key. >");
       ch = getchar(); // wait for a carriage return, or don't
+      ch = tolower(ch);
+//      printf("ch:%.2X\n", ch); // For debugging selections
+      if (ch != 0x0A) 
+      trash = getchar(); // to grab the enter
+      else break;
       switch (ch)
       {
       case 's':
@@ -621,8 +655,11 @@ int main(int argc, char *argv[])
         sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
-        //Sleep(20);
+#if defined(_WIN32)
+        Sleep(20);
+#elif !defined(_WIN32)
         usleep(20000);
+#endif
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
@@ -630,7 +667,8 @@ int main(int argc, char *argv[])
         LEDState = readGPIObyte(ftdiHandle, 1);
         break;
       default:
-        if (ch == 'x') ch = 0x0D;
+        if (ch == 'x')
+          ch = 0x0A;
         break;
       }
       // printf("Got it? 0x%.2X ", ch);
