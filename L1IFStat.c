@@ -641,10 +641,29 @@ int main(int argc, char *argv[])
         break;
       case 'p':
         // sendSPItoMAX(ftdiHandle, 0x9AC00080, 0x03); // 4 MHz
-        sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
+        //sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
+        sendSPItoMAX(ftdiHandle, 0xA2919A70, CONF1); //
         msPause(20);
+        sendSPItoMAX(ftdiHandle, 0x05512881, CONF2); //
+        msPause(20);
+        //sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x9EC00080, PLLCONF); // 16.368 MHz
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x0C000800, DIV); //
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x80000700, FDIV); //
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x80000000, STRM); //
+        //msPause(20);
+        //sendSPItoMAX(ftdiHandle, 0x10061B20, CLK); //
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x1E0F4010, TEST1); //
+        //msPause(200);
+        //sendSPItoMAX(ftdiHandle, 0x28C04020, TEST2); //
+        //msPause(200);
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
