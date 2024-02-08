@@ -646,7 +646,7 @@ int main(int argc, char *argv[])
                                                        // Notice the trailing zero on the data... that's where the address goes
         sendSPItoMAX(ftdiHandle, 0xA2919A70, CONF1); //
         msPause(20);
-        sendSPItoMAX(ftdiHandle, 0x05512881, CONF2); //
+        sendSPItoMAX(ftdiHandle, 0x85512881, CONF2); //
         msPause(20);
         //sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
         //msPause(200);
