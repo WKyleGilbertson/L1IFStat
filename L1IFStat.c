@@ -645,8 +645,10 @@ int main(int argc, char *argv[])
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
         sendSPItoMAX(ftdiHandle, 0xA2919A70, CONF1); //
+        printf("Sending: 0xA2919A70 to CONF1\n");
         msPause(20);
         sendSPItoMAX(ftdiHandle, 0x85512881, CONF2); // DS2+Q: Note data sheet is wrong
+        printf("Sending: 0x85512881 to CONF2\n");
         msPause(20);
         //sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
         //msPause(200);
