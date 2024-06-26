@@ -644,12 +644,31 @@ int main(int argc, char *argv[])
         //sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
+        printf("Enter 2 for DS2+Q and 3 for DS6\n");
+        printf("Press <Enter after selection key. >");
+        ch = getchar();
+//        ch = tolower(ch);
+        switch(ch) {
+        case '3':
+          printf("Programming for DS6 (3bit I only)\n");
+        sendSPItoMAX(ftdiHandle, 0xA2935730, CONF1); //
+        printf("Sending: 0xA2935730 to CONF1\n");
+        msPause(20);
+        sendSPItoMAX(ftdiHandle, 0x05503081, CONF2); // DS6: Note data sheet is wrong
+        printf("Sending: 0x05503081 to CONF2\n");
+        msPause(20);
+        break;
+        default :
+//        case '2':
+          printf("Programming for DS2+Q (2bit I&Q)\n");
         sendSPItoMAX(ftdiHandle, 0xA2919A70, CONF1); //
         printf("Sending: 0xA2919A70 to CONF1\n");
         msPause(20);
         sendSPItoMAX(ftdiHandle, 0x85512881, CONF2); // DS2+Q: Note data sheet is wrong
         printf("Sending: 0x85512881 to CONF2\n");
         msPause(20);
+        break;
+      }
         //sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
         //msPause(200);
         //sendSPItoMAX(ftdiHandle, 0x9EC00080, PLLCONF); // 16.368 MHz
@@ -666,6 +685,8 @@ int main(int argc, char *argv[])
         //msPause(200);
         //sendSPItoMAX(ftdiHandle, 0x28C04020, TEST2); //
         //msPause(200);
+      if (ch != 0x0A)
+        trash = getchar(); // to grab the enter
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
