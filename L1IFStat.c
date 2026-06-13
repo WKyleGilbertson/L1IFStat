@@ -664,9 +664,9 @@ int main(int argc, char *argv[])
         msPause(200);
         sendSPItoMAX(ftdiHandle, 0x80000000, STRM); //
         msPause(20);
-        sendSPItoMAX(ftdiHandle, 0x10061B00, CLK); //
+        sendSPItoMAX(ftdiHandle, 0x10061B20, CLK); //
         msPause(20);
-        sendSPItoMAX(ftdiHandle, 0x1E0F4000, TEST1); //
+        sendSPItoMAX(ftdiHandle, 0x1E0F4010, TEST1); //
         printf("Sending: 0x1E0F4000 to TEST1\n");
         msPause(20);
         sendSPItoMAX(ftdiHandle, 0x28C04020, TEST2); //
