@@ -644,32 +644,34 @@ int main(int argc, char *argv[])
         //sendSPItoMAX(ftdiHandle, 0x9CC00080, PLLCONF); // 8 MHz
                                                        // sendSPItoMAX(ftdiHandle, 0x9EC00080, 0x03); // 16 MHz
                                                        // Notice the trailing zero on the data... that's where the address goes
-        //sendSPItoMAX(ftdiHandle, 0xA2919A70, CONF1); //
-        sendSPItoMAX(ftdiHandle, 0xA2919A30, CONF1); //
-        //printf("Sending: 0xA2919A70 to CONF1\n");
-        printf("Sending: 0xA2919A30 to CONF1\n");
+        sendSPItoMAX(ftdiHandle, 0xA2919A20, CONF1); //
+        printf("Sending: 0xA2919A20 to CONF1\n");
+        //sendSPItoMAX(ftdiHandle, 0xA2919670, CONF1); //
+        //printf("Sending: 0xA2919670 to CONF1\n");
         msPause(20);
-        //sendSPItoMAX(ftdiHandle, 0x85512881, CONF2); // DS2+Q: Note data sheet is wrong
-        sendSPItoMAX(ftdiHandle, 0x055028C1, CONF2); // DS2+Q: Note data sheet is wrong
-        //printf("Sending: 0x85512881 to CONF2\n");
-        printf("Sending: 0x055028C1 to CONF2\n");
+        sendSPItoMAX(ftdiHandle, 0x155028C0, CONF2); // DS2+Q: Note data sheet is wrong
+        printf("Sending: 0x155028C0 to CONF2\n");
+        //sendSPItoMAX(ftdiHandle, 0x85502881, CONF2); // DS2+Q: Note data sheet is wrong
+        //printf("Sending: 0x85502881 to CONF2\n");
         msPause(20);
-        //sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x9EC00080, PLLCONF); // 16.368 MHz
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x0C000800, DIV); //
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x80000700, FDIV); //
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x80000000, STRM); //
-        //msPause(20);
-        //sendSPItoMAX(ftdiHandle, 0x10061B20, CLK); //
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x1E0F4010, TEST1); //
-        //msPause(200);
-        //sendSPItoMAX(ftdiHandle, 0x28C04020, TEST2); //
-        //msPause(200);
+        sendSPItoMAX(ftdiHandle, 0xEAFE1DC0, CONF3); //
+        msPause(200);
+        sendSPItoMAX(ftdiHandle, 0x9EC00080, PLLCONF); // 16.368 MHz
+        msPause(200);
+        sendSPItoMAX(ftdiHandle, 0x0C000800, DIV); //
+        msPause(200);
+        sendSPItoMAX(ftdiHandle, 0x80000700, FDIV); //
+        msPause(200);
+        sendSPItoMAX(ftdiHandle, 0x80000000, STRM); //
+        msPause(20);
+        sendSPItoMAX(ftdiHandle, 0x10061B00, CLK); //
+        msPause(20);
+        sendSPItoMAX(ftdiHandle, 0x1E0F4000, TEST1); //
+        printf("Sending: 0x1E0F4000 to TEST1\n");
+        msPause(20);
+        sendSPItoMAX(ftdiHandle, 0x28C04020, TEST2); //
+        printf("Sending: 0x28C04020 to TEST2\n");
+        msPause(200);
         break;
       case 'l':
         LEDState = readGPIObyte(ftdiHandle, 1);
